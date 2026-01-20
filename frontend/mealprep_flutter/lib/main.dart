@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'dart:io'; // for Platform check
+import 'package:flutter/foundation.dart'; // for kIsWeb
 
 // Setup Dio (HTTP Client)
 final dioProvider = Provider<Dio>((ref) {
+  String baseUrl;
+
+  if (kIsWeb) {
+    // check if in browser
+    baseUrl = 'http://localhost'; 
+  } else if (Platform.isAndroid) {
+    // check android emulator
+    baseUrl = 'http://10.0.2.2'; 
+  } else {
+    // IOS simulator or other
+    baseUrl = 'http://localhost'; 
+  }
+
   final dio = Dio(BaseOptions(
-    baseUrl: 'http://localhost', // Via Nginx
+    baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 5),
   ));
   return dio;
