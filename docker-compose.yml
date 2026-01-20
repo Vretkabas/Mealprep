@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # ============ BACKEND API ============
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartpromo_api
+    environment:
+      # BELANGRIJK: Hier komt je Supabase connectie string
+      # Mode=session is nodig voor transacties in serverless omgevingen (pooler)
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 2001:4860:4860::8888
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - smartpromo_network
+
+  # ============ CACHE ============
+  redis:
+    image: redis:7-alpine
+    container_name: smartpromo_cache
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - smartpromo_network
+
+networks:
+  smartpromo_network:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+        - subnet: 2001:db8:1::/64
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "true"
