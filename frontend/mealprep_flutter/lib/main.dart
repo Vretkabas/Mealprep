@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'dart:io'; // for Platform check
 import 'package:flutter/foundation.dart'; // for kIsWeb
 
+import 'screens/home_screen.dart';
+
 // Setup Dio (HTTP Client)
 final dioProvider = Provider<Dio>((ref) {
   String baseUrl;
@@ -47,60 +49,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Smart Promo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 3. Lees de status van de API call
-    final apiStatus = ref.watch(apiCheckProvider);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Smart Promo Dashboard'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.shopping_cart, size: 80, color: Colors.green),
-            const SizedBox(height: 20),
-            const Text(
-              "Backend Status:",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            
-            // 4. Toon loading, error of data
-            apiStatus.when(
-              data: (data) => Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(data, textAlign: TextAlign.center),
-              ),
-              error: (err, stack) => Text("Error: $err", style: const TextStyle(color: Colors.red)),
-              loading: () => const CircularProgressIndicator(),
-            ),
-            
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => ref.refresh(apiCheckProvider),
-              child: const Text("Test Verbinding Opnieuw"),
-            )
-          ],
-        ),
-      ),
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomeScreen(),
     );
   }
 }
