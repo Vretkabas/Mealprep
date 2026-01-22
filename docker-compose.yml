@@ -61,8 +61,7 @@ services:
     container_name: smartpromo_scraper
 
     # browsers need shared memory, otherwise they crash ('Crashpad' errors).
-    ipc: host  
-    
+    ipc: host
     volumes:
       - ./scraper:/app
     environment:
@@ -74,6 +73,9 @@ services:
       - backend
       - redis
 
+    # Keep container running for development
+    command: tail -f /dev/null
+    # command: python main.py
 networks:
   smartpromo_network:
     driver: bridge
