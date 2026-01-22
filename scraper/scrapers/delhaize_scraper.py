@@ -100,10 +100,22 @@ def run(playwright: Playwright):
                     product_promotion_from, product_promotion_to = parse_promotion_dates(product_promotion_date)
                 else:
                     product_promotion_date = "N/A"
+                
+                # original price
+                product_original_price = soup.find("div", {"data-testid": "product-block-price"})
+                if product_original_price:
+                    label_text = product_original_price.get("aria-label")
+
+                    match = re.search(r"Prijs:\s+(\d+)\s+euro\s+(\d+)", label_text)
+
+                    if match:
+                        product_euros = match.group(1)
+                        product_cents = match.group(2)
+                        product_price = f"{product_euros}.{product_cents}"
 
                 print(f"Product Name: {product_name}")
+                print(f"Prijs: {product_price}")
                 print(f"Product Promotion: {product_promotion}")
-                print(f"Product Promotion Date: {product_promotion_date}")
                 print(f"Product Promotion From: {product_promotion_from}")
                 print(f"Product Promotion To: {product_promotion_to}")
 
