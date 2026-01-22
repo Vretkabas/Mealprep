@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  mobile_scanner: ^5.2.3 #voor de barcodes te scannen
+  http: ^1.2.0  # Voor API calls
   flutter_riverpod: ^2.4.0
   dio: ^5.3.0
 
