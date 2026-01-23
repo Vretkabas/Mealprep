@@ -71,8 +71,8 @@ def run(playwright: Playwright):
 
     # First, determine how many pages exist
     # We'll check pages until we find an empty one
-    MAX_PAGES_TO_CHECK = 3  # for now limit to 3 pages for testing
-    MAX_CONCURRENT_PAGE_CHECKS = 10  # parallel page loading for discovery
+    MAX_PAGES_TO_CHECK = 2  # for now limit to 3 pages for testing
+    MAX_CONCURRENT_PAGE_CHECKS = 5  # parallel page loading for discovery
 
     print("Discovering available pages...")
     page_number = 1
@@ -127,7 +127,7 @@ def run(playwright: Playwright):
 
     # Now scrape all product links from discovered pages in parallel
     print("Collecting product links from all pages in parallel...")
-    MAX_CONCURRENT_PAGES = 10
+    MAX_CONCURRENT_PAGES = 5
 
     for i in range(0, len(pages_with_products), MAX_CONCURRENT_PAGES):
         batch_page_nums = pages_with_products[i:i + MAX_CONCURRENT_PAGES]
@@ -168,7 +168,7 @@ def run(playwright: Playwright):
     print(f"\nStarting to scrape {len(product_urls)} products with parallel pages...")
 
     product_full = []
-    MAX_CONCURRENT_PAGES = 10  # number of parallel browser pages
+    MAX_CONCURRENT_PAGES = 5  # number of parallel browser pages
     product_urls_list = list(product_urls)
 
     # Process products in batches
@@ -256,7 +256,7 @@ with sync_playwright() as playwright:
     product_full = run(playwright)
 
 print("Sending data to API...")
-api_url = "http://localhost:8000/products/batch-upload-delhaize"
+api_url = "http://localhost/products/batch-upload-delhaize"
 
 try:
     # Send data to API (JSON)
