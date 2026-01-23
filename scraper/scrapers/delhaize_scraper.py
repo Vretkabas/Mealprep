@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright, Playwright
 from rich import print
 from bs4 import BeautifulSoup
 import re
+import time # needed for pauzes
 
 #function to extract date and split in two variables
 def parse_promotion_dates(date_string):
@@ -58,8 +59,32 @@ def run(playwright: Playwright):
     page.wait_for_load_state("networkidle")
     print("Page loaded, starting product scraping...")
 
+
+    # get initial height of page
+    last_height = page.evaluate("document.body.scrollHeight")
+
+    # dict for storing product details
+    product_full = []
     # get product promotion info
     while True:
+        # scroll to bottom to load all products (infinite scroll)
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+
+         # wait for new products to load
+        time.sleep(2)
+        
+        # calculate new height of page
+        new_height = page.evaluate("document.body.scrollHeight")
+
+        # Check: did the height change?
+        if new_height == last_height:
+            # if height didnt change, we reached the end of the page
+            print("Einde van de pagina bereikt.")
+            break
+    
+        # update height for next iteration
+        last_height = new_height
+
         # open every product in a new page because all details are not available on the listing page
         for link in page.locator("a[data-testid='product-block-image-link']").all():
             p = browser.new_page(base_url="https://www.delhaize.be/") # href doesnt contain ful url ==> add base url
@@ -112,13 +137,18 @@ def run(playwright: Playwright):
                         product_euros = match.group(1)
                         product_cents = match.group(2)
                         product_price = f"{product_euros}.{product_cents}"
+                
+                # store current product details in dict
+                current_product = {}
+                current_product["name"] = product_name
+                current_product["price"] = product_price
+                current_product["promotion"] = product_promotion
+                current_product["promotion_from"] = product_promotion_from
+                current_product["promotion_to"] = product_promotion_to
 
-                print(f"Product Name: {product_name}")
-                print(f"Prijs: {product_price}")
-                print(f"Product Promotion: {product_promotion}")
-                print(f"Product Promotion From: {product_promotion_from}")
-                print(f"Product Promotion To: {product_promotion_to}")
-
+                # append current product to full list
+                product_full.append(current_product)
+                print(f"all products: {product_full}")
             else:
                 p.close()
                 print(f"URL doesnt exist, closed page.")
