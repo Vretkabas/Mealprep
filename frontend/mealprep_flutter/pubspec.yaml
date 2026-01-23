@@ -34,7 +34,7 @@ dependencies:
   http: ^1.2.0  # Voor API calls
   flutter_riverpod: ^2.4.0
   dio: ^5.4.0
-  mobile_scanner: ^3.5.0
+  
   image_picker: ^1.0.4
 
   
