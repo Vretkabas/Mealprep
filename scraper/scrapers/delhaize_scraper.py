@@ -4,6 +4,15 @@ from bs4 import BeautifulSoup
 import re
 import time # needed for pauzes
 
+""" 
+Scraper for Delhaize promotional products 
+structure:
+- PHASE 1: Infinite scroll to collect all product links
+- PHASE 2: Scrape all collected product links with parallel pages
+
+"""
+
+
 #function to extract date and split in two variables
 def parse_promotion_dates(date_string):
     # check if date_string is valid
@@ -16,10 +25,8 @@ def parse_promotion_dates(date_string):
     # 3. search for ' tot en met '
     # 4. get second date (\d+/\d+/\d+) -> group 2
     pattern = r"van\s+(\d{1,2}/\d{1,2}/\d{4})\s+tot en met\s+(\d{1,2}/\d{1,2}/\d{4})"
-    
     # search in text
     match = re.search(pattern, date_string, re.IGNORECASE)
-    
     if match:
         start_date = match.group(1)
         end_date = match.group(2)
@@ -57,103 +64,149 @@ def run(playwright: Playwright):
 
     # Wait for page to stabilize
     page.wait_for_load_state("networkidle")
-    print("Page loaded, starting product scraping...")
+    print("Page loaded, starting infinite scroll to collect all product links...")
 
+    # PHASE 1: Scroll incrementally and collect all unique product links
+    # set to store unique product URLs
+    product_urls = set()
 
-    # get initial height of page
-    last_height = page.evaluate("document.body.scrollHeight")
+    # track how many times we've seen the same number of products
+    no_new_products_count = 0
+    max_no_new_products = 5  # stop after 5 consecutive scrolls without new products
 
-    # dict for storing product details
-    product_full = []
-    # get product promotion info
+    scroll_pause_time = 2  # seconds to wait after each scroll
+
     while True:
-        # scroll to bottom to load all products (infinite scroll)
-        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        previous_count = len(product_urls)
 
-         # wait for new products to load
-        time.sleep(2)
-        
-        # calculate new height of page
-        new_height = page.evaluate("document.body.scrollHeight")
-
-        # Check: did the height change?
-        if new_height == last_height:
-            # if height didnt change, we reached the end of the page
-            print("Einde van de pagina bereikt.")
-            break
-    
-        # update height for next iteration
-        last_height = new_height
-
-        # open every product in a new page because all details are not available on the listing page
-        for link in page.locator("a[data-testid='product-block-image-link']").all():
-            p = browser.new_page(base_url="https://www.delhaize.be/") # href doesnt contain ful url ==> add base url
+        # collect all product links currently visible on the page
+        links = page.locator("a[data-testid='product-block-image-link']").all()
+        for link in links:
             url = link.get_attribute("href")
-            if url is not None:
-                p.goto(url)
-                print(f"Opened product page: {url}")
+            if url:
+                # make sure URL is absolute
+                if not url.startswith("http"):
+                    url = f"https://www.delhaize.be{url}"
+                product_urls.add(url)
 
+        new_count = len(product_urls)
+        new_products = new_count - previous_count
+
+        print(f"Collected {new_count} unique product links (+{new_products} new)...")
+
+        # Check if we got new products
+        if new_products == 0:
+            no_new_products_count += 1
+            print(f"No new products found ({no_new_products_count}/{max_no_new_products})...")
+
+            if no_new_products_count >= max_no_new_products:
+                print(f"Einde van de pagina bereikt. Total unique products: {len(product_urls)}")
+                break
+        else:
+            # reset counter if we found new products
+            no_new_products_count = 0
+
+        # INCREMENTAL SCROLL: scroll by viewport height instead of to absolute bottom
+        # this keeps products in view and prevents virtual scrolling from removing them
+        page.evaluate("window.scrollBy(0, window.innerHeight)")
+
+        # wait for new products to load
+        time.sleep(scroll_pause_time)
+
+        # check if we're near the bottom of the page
+        at_bottom = page.evaluate("""
+            () => {
+                return (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100;
+            }
+        """)
+
+        if at_bottom:
+            print("Reached near bottom of page, scrolling a bit more to trigger lazy loading...")
+            # scroll a bit more to trigger any remaining lazy loading
+            page.evaluate("window.scrollBy(0, 500)")
+            time.sleep(scroll_pause_time)
+
+    # PHASE 2: Scrape all collected product links with parallel pages
+    print(f"\nStarting to scrape {len(product_urls)} products with parallel pages...")
+
+    product_full = []
+    MAX_CONCURRENT_PAGES = 10  # number of parallel browser pages
+    product_urls_list = list(product_urls)
+
+    # Process products in batches
+    for i in range(0, len(product_urls_list), MAX_CONCURRENT_PAGES):
+        batch = product_urls_list[i:i + MAX_CONCURRENT_PAGES]
+        batch_pages = []
+
+        # Open all pages in the batch simultaneously
+        for url in batch:
+            try:
+                p = browser.new_page()
+                batch_pages.append((p, url))
+                p.goto(url, wait_until="domcontentloaded")
+            except Exception as e:
+                print(f"Error opening {url}: {e}")
+
+        # Wait for all pages in batch to load and scrape them
+        for p, url in batch_pages:
+            try:
                 # wait for page to be fully loaded in
                 p.wait_for_selector("h1[data-testid='product-common-header-title']", timeout=10000)
-
-                # ensure all network activity is done so that dynamic content is fully loaded
                 p.wait_for_load_state("networkidle")
 
                 # extract product details
                 soup = BeautifulSoup(p.content(), "html.parser")
+
                 # product name
                 product_name = soup.find("h1", {"data-testid": "product-common-header-title"})
-                # check if name exist
-                if product_name:
-                    product_name = product_name.text.strip()
-                else:
-                    product_name = "N/A"
+                product_name = product_name.text.strip() if product_name else "N/A"
 
                 # promotion info
                 product_promotion = soup.find("div", {"data-testid": "tag-promo-label"})
-                # check if promotion exist
-                if product_promotion:
-                    product_promotion = product_promotion.text.strip()
-                else:
-                    product_promotion = "N/A"
-                    
+                product_promotion = product_promotion.text.strip() if product_promotion else "N/A"
+
                 # promotion date range
+                product_promotion_from = "N/A"
+                product_promotion_to = "N/A"
                 product_promotion_date = soup.find("span", {"data-testid": "tag-promo-expiration-date"})
                 if product_promotion_date:
                     product_promotion_date = product_promotion_date.text.strip()
-                    # extract from and to dates
                     product_promotion_from, product_promotion_to = parse_promotion_dates(product_promotion_date)
-                else:
-                    product_promotion_date = "N/A"
-                
+
                 # original price
+                product_price = "N/A"
                 product_original_price = soup.find("div", {"data-testid": "product-block-price"})
                 if product_original_price:
                     label_text = product_original_price.get("aria-label")
+                    if label_text:
+                        match = re.search(r"Prijs:\s+(\d+)\s+euro\s+(\d+)", label_text)
+                        if match:
+                            product_euros = match.group(1)
+                            product_cents = match.group(2)
+                            product_price = f"{product_euros}.{product_cents}"
 
-                    match = re.search(r"Prijs:\s+(\d+)\s+euro\s+(\d+)", label_text)
-
-                    if match:
-                        product_euros = match.group(1)
-                        product_cents = match.group(2)
-                        product_price = f"{product_euros}.{product_cents}"
-                
                 # store current product details in dict
-                current_product = {}
-                current_product["name"] = product_name
-                current_product["price"] = product_price
-                current_product["promotion"] = product_promotion
-                current_product["promotion_from"] = product_promotion_from
-                current_product["promotion_to"] = product_promotion_to
+                current_product = {
+                    "name": product_name,
+                    "price": product_price,
+                    "promotion": product_promotion,
+                    "promotion_from": product_promotion_from,
+                    "promotion_to": product_promotion_to,
+                    "url": url
+                }
 
-                # append current product to full list
                 product_full.append(current_product)
-                print(f"all products: {product_full}")
-            else:
+                print(f"[{len(product_full)}/{len(product_urls_list)}] Scraped: {product_name}")
+
+            except Exception as e:
+                print(f"Error scraping {url}: {e}")
+            finally:
                 p.close()
-                print(f"URL doesnt exist, closed page.")
-        
-            p.close() # close the last opened product page
+
+        print(f"Batch {i//MAX_CONCURRENT_PAGES + 1} completed. Total scraped: {len(product_full)}")
+
+    print(f"\nScraping completed! Total products scraped: {len(product_full)}")
+    print(f"Sample products: {product_full[:3] if len(product_full) >= 3 else product_full}")
 
 
 with sync_playwright() as playwright:
