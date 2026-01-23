@@ -4,6 +4,9 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
+import 'screens/home_screen.dart';
+
+// Setup Dio (HTTP Client)
 // ⬇SCREENS IMPORTEREN
 import 'screens/barcode_scanner_screen.dart';
 import 'screens/camera_scan_screen.dart';

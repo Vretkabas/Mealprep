@@ -1,28 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:mealprep_flutter/screens/product_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mealprep_flutter/services/food_api_service.dart';
 
-class BarcodeScannerScreen extends StatelessWidget {
+class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
+
+  @override
+  State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
+}
+
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
+  final MobileScannerController _controller = MobileScannerController();
+  bool _isProcessing = false; // voorkomt dubbele detecties
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Scan barcode")),
+      appBar: AppBar(title: const Text('Scan barcode')),
       body: MobileScanner(
-        onDetect: (barcode) {
-          final code = barcode.barcodes.first.rawValue;
+        onDetect: (capture) {
+          final barcodes = capture.barcodes;
+          if (barcodes.isEmpty) return;
+
+          final code = barcodes.first.rawValue;
           if (code == null) return;
 
-          debugPrint("EAN: $code");
+          print('Gescande barcode: $code');
 
-          // 👉 GA NAAR CAMERA SCREEN
-          Navigator.pushNamed(
+          // Open nieuw scherm en haal product op daar
+          Navigator.push(
             context,
-            '/camera',
-            arguments: code,
+            MaterialPageRoute(
+              builder: (_) => ProductScreen(barcode: code),
+            ),
           );
-        },
-      ),
+        }
+
+      )
     );
   }
 }

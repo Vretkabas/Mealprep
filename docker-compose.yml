@@ -34,13 +34,14 @@ services:
     image: nginx:alpine
     container_name: smartpromo_nginx
     ports:
-      - "80:80"
+      - "8081:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - backend
     networks:
       - smartpromo_network
+
 
   redis:
     image: redis:7-alpine
