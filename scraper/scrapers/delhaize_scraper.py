@@ -2,13 +2,12 @@ from playwright.sync_api import sync_playwright, Playwright
 from rich import print
 from bs4 import BeautifulSoup
 import re
-import time # needed for pauzes
 import requests
 
-""" 
-Scraper for Delhaize promotional products 
+"""
+Scraper for Delhaize promotional products
 structure:
-- PHASE 1: Infinite scroll to collect all product links
+- PHASE 1: Parallel page loading to collect all product links
 - PHASE 2: Scrape all collected product links with parallel pages
 
 """
@@ -65,70 +64,105 @@ def run(playwright: Playwright):
 
     # Wait for page to stabilize
     page.wait_for_load_state("networkidle")
-    print("Page loaded, starting infinite scroll to collect all product links...")
+    print("Page loaded, starting to collect product links from all pages...")
 
-    # PHASE 1: Scroll incrementally and collect all unique product links
-    # set to store unique product URLs
+    # PHASE 1: Load pages in parallel to collect all product links
     product_urls = set()
 
-    # track how many times we've seen the same number of products
-    no_new_products_count = 0
-    max_no_new_products = 5  # stop after 5 consecutive scrolls without new products
+    # First, determine how many pages exist
+    # We'll check pages until we find an empty one
+    MAX_PAGES_TO_CHECK = 3  # for now limit to 3 pages for testing
+    MAX_CONCURRENT_PAGE_CHECKS = 10  # parallel page loading for discovery
 
-    scroll_pause_time = 2  # seconds to wait after each scroll
+    print("Discovering available pages...")
+    page_number = 1
+    pages_with_products = []
 
-    scroll_limit = 5
-    scroll_count = 0
-    while scroll_limit > scroll_count:
-        previous_count = len(product_urls)
+    # Quick discovery: check pages in batches to find the last page
+    while page_number <= MAX_PAGES_TO_CHECK:
+        batch_pages = []
+        batch_page_numbers = []
 
-        # collect all product links currently visible on the page
-        links = page.locator("a[data-testid='product-block-image-link']").all()
-        for link in links:
-            url = link.get_attribute("href")
-            if url:
-                # make sure URL is absolute
-                if not url.startswith("http"):
-                    url = f"https://www.delhaize.be{url}"
-                product_urls.add(url)
-
-        new_count = len(product_urls)
-        new_products = new_count - previous_count
-
-        print(f"Collected {new_count} unique product links (+{new_products} new)...")
-
-        # Check if we got new products
-        if new_products == 0:
-            no_new_products_count += 1
-            print(f"No new products found ({no_new_products_count}/{max_no_new_products})...")
-
-            if no_new_products_count >= max_no_new_products:
-                print(f"Einde van de pagina bereikt. Total unique products: {len(product_urls)}")
+        # Open multiple pages at once to check for products
+        for offset in range(MAX_CONCURRENT_PAGE_CHECKS):
+            current_page_num = page_number + offset
+            if current_page_num > MAX_PAGES_TO_CHECK:
                 break
-        else:
-            # reset counter if we found new products
-            no_new_products_count = 0
 
-        # INCREMENTAL SCROLL: scroll by viewport height instead of to absolute bottom
-        # this keeps products in view and prevents virtual scrolling from removing them
-        page.evaluate("window.scrollBy(0, window.innerHeight)")
+            try:
+                p = browser.new_page()
+                page_url = f"{start_url}?pageNumber={current_page_num}"
+                batch_pages.append(p)
+                batch_page_numbers.append(current_page_num)
+                p.goto(page_url, wait_until="domcontentloaded")
+            except Exception as e:
+                print(f"Error opening page {current_page_num}: {e}")
 
-        # wait for new products to load
-        time.sleep(scroll_pause_time)
+        # Check each page for products
+        found_products_in_batch = False
+        for p, page_num in zip(batch_pages, batch_page_numbers):
+            try:
+                p.wait_for_load_state("networkidle", timeout=10000)
+                links = p.locator("a[data-testid='product-block-image-link']").all()
 
-        # check if we're near the bottom of the page
-        at_bottom = page.evaluate("""
-            () => {
-                return (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 100;
-            }
-        """)
+                if len(links) > 0:
+                    pages_with_products.append(page_num)
+                    found_products_in_batch = True
+                    print(f"Page {page_num}: {len(links)} products found")
+                else:
+                    print(f"Page {page_num}: No products found")
+            except Exception as e:
+                print(f"Error checking page {page_num}: {e}")
+            finally:
+                p.close()
 
-        if at_bottom:
-            print("Reached near bottom of page, scrolling a bit more to trigger lazy loading...")
-            # scroll a bit more to trigger any remaining lazy loading
-            page.evaluate("window.scrollBy(0, 500)")
-            time.sleep(scroll_pause_time)
-        scroll_count += 1
+        # If no products found in entire batch, we've reached the end
+        if not found_products_in_batch:
+            print(f"No more pages with products after page {page_number - 1}")
+            break
+
+        page_number += MAX_CONCURRENT_PAGE_CHECKS
+
+    print(f"Found {len(pages_with_products)} pages with products")
+
+    # Now scrape all product links from discovered pages in parallel
+    print("Collecting product links from all pages in parallel...")
+    MAX_CONCURRENT_PAGES = 10
+
+    for i in range(0, len(pages_with_products), MAX_CONCURRENT_PAGES):
+        batch_page_nums = pages_with_products[i:i + MAX_CONCURRENT_PAGES]
+        batch_pages = []
+
+        # Open all pages in batch
+        for page_num in batch_page_nums:
+            try:
+                p = browser.new_page()
+                page_url = f"{start_url}?pageNumber={page_num}"
+                batch_pages.append((p, page_num))
+                p.goto(page_url, wait_until="domcontentloaded")
+            except Exception as e:
+                print(f"Error opening page {page_num}: {e}")
+
+        # Collect product links from each page
+        for p, page_num in batch_pages:
+            try:
+                p.wait_for_load_state("networkidle", timeout=10000)
+                links = p.locator("a[data-testid='product-block-image-link']").all()
+
+                for link in links:
+                    url = link.get_attribute("href")
+                    if url:
+                        if not url.startswith("http"):
+                            url = f"https://www.delhaize.be{url}"
+                        product_urls.add(url)
+
+                print(f"Page {page_num}: Collected {len(links)} product links (Total: {len(product_urls)})")
+            except Exception as e:
+                print(f"Error scraping page {page_num}: {e}")
+            finally:
+                p.close()
+
+    print(f"Total unique product URLs collected: {len(product_urls)}")
 
     # PHASE 2: Scrape all collected product links with parallel pages
     print(f"\nStarting to scrape {len(product_urls)} products with parallel pages...")
