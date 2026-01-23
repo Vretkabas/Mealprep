@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   # ============ BACKEND API ============
   backend:
     build:
@@ -55,6 +56,16 @@ services:
     networks:
       - smartpromo_network
 
+      
+  yolo:
+    build:
+      context: ./backend/ai/yolo
+    container_name: smartpromo_yolo
+    ports:
+      - "8001:8001"
+    networks:
+      - smartpromo_network
+
 networks:
   smartpromo_network:
     driver: bridge
@@ -65,3 +76,5 @@ networks:
         - subnet: 2001:db8:1::/64
     driver_opts:
       com.docker.network.bridge.enable_ip_masquerade: "true"
+
+  
