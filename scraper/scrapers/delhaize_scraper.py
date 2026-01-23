@@ -3,6 +3,7 @@ from rich import print
 from bs4 import BeautifulSoup
 import re
 import time # needed for pauzes
+import requests
 
 """ 
 Scraper for Delhaize promotional products 
@@ -76,7 +77,9 @@ def run(playwright: Playwright):
 
     scroll_pause_time = 2  # seconds to wait after each scroll
 
-    while True:
+    scroll_limit = 5
+    scroll_count = 0
+    while scroll_limit > scroll_count:
         previous_count = len(product_urls)
 
         # collect all product links currently visible on the page
@@ -125,6 +128,7 @@ def run(playwright: Playwright):
             # scroll a bit more to trigger any remaining lazy loading
             page.evaluate("window.scrollBy(0, 500)")
             time.sleep(scroll_pause_time)
+        scroll_count += 1
 
     # PHASE 2: Scrape all collected product links with parallel pages
     print(f"\nStarting to scrape {len(product_urls)} products with parallel pages...")
@@ -164,6 +168,10 @@ def run(playwright: Playwright):
                 # promotion info
                 product_promotion = soup.find("div", {"data-testid": "tag-promo-label"})
                 product_promotion = product_promotion.text.strip() if product_promotion else "N/A"
+                # skip online-only promotions
+                if product_promotion == "N/A" or re.search(r"online", product_promotion, re.IGNORECASE):
+                    print(f"Skipping online-only promo for: {product_name}")
+                    continue # go to next product skip this current product
 
                 # promotion date range
                 product_promotion_from = "N/A"
@@ -208,6 +216,21 @@ def run(playwright: Playwright):
     print(f"\nScraping completed! Total products scraped: {len(product_full)}")
     print(f"Sample products: {product_full[:3] if len(product_full) >= 3 else product_full}")
 
+    return product_full
 
 with sync_playwright() as playwright:
-    run(playwright)
+    product_full = run(playwright)
+
+print("Sending data to API...")
+api_url = "http://localhost:8000/products/batch-upload-delhaize"
+
+try:
+    # Send data to API (JSON)
+    response = requests.post(api_url, json=product_full)
+    
+    if response.status_code == 200:
+        print("Succes!")
+    else:
+        print(f"error API: {response.status_code} - {response.text}")
+except Exception as e:
+    print(f"couldn't reach API: {e}")
