@@ -56,6 +56,28 @@ services:
     networks:
       - smartpromo_network
 
+  scraper:
+    build:
+      context: ./scraper
+      dockerfile: Dockerfile
+    container_name: smartpromo_scraper
+
+    # browsers need shared memory, otherwise they crash ('Crashpad' errors).
+    ipc: host
+    volumes:
+      - ./scraper:/app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - smartpromo_network
+    depends_on:
+      - backend
+      - redis
+
+    # Keep container running for development
+    command: tail -f /dev/null
+    # command: python main.py
       
   yolo:
     build:
