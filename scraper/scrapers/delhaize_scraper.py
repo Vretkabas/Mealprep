@@ -20,7 +20,7 @@ def parse_promotion_dates(date_string):
         return "N/A", "N/A"
 
     # regex pattern:
-    # 1. search for 'van ' 
+    # 1. search for 'van '
     # 2. get first date (\d+/\d+/\d+) -> group 1
     # 3. search for ' tot en met '
     # 4. get second date (\d+/\d+/\d+) -> group 2
@@ -35,26 +35,49 @@ def parse_promotion_dates(date_string):
         return "N/A", "N/A"
 
 
+def select_french_language_header(page):
+    """Select French language using the header language switcher (persistent for session)."""
+    try:
+        # Click the language switcher button in header
+        switcher_button = page.locator("button[data-testid='header-language-switcher-button']")
+        if switcher_button.is_visible(timeout=2000):
+            switcher_button.click()
+            # Wait for dropdown to appear and click FR option
+            page.wait_for_timeout(500)
+            fr_option = page.locator("span[data-testid='header-language-switcher-button-label']:has-text('FR')")
+            if fr_option.is_visible(timeout=1000):
+                fr_option.click()
+                page.wait_for_load_state("networkidle")
+                print("Language switched to French via header")
+                return True
+    except Exception as e:
+        print(f"Could not switch language: {e}")
+    return False
+
+
 
 def run(playwright: Playwright):
     # setup browser and navigate to start URL
     start_url = "https://www.delhaize.be/Promolandingpage"
     chrome = playwright.chromium
     browser = chrome.launch(headless=False)
-    page = browser.new_page()
+
+    # Create a shared browser context - all pages will share cookies/state
+    context = browser.new_context()
+    page = context.new_page()
     page.goto(start_url)
     print(f"Navigated to {start_url}")
 
-    # before opening products, there are two popups to handle:
-    # 1. language popup (Nederlands)
+    # Handle popups and set language:
+    # 1. Language popup (initial - select French)
     try:
-        language_button = page.locator("div[data-testid='button-text']:has-text('Nederlands')")
+        language_button = page.locator("div[data-testid='button-text']:has-text('Français')")
         language_button.click(timeout=5000)
-        print("Language selected: Nederlands")
+        print("Language popup: French selected")
     except:
         print("Language popup not found or already handled")
 
-    # 2. cookie popup
+    # 2. Cookie popup
     try:
         cookie_button = page.locator("button[data-testid='cookie-popup-accept']")
         cookie_button.click(timeout=5000)
@@ -64,6 +87,10 @@ def run(playwright: Playwright):
 
     # Wait for page to stabilize
     page.wait_for_load_state("networkidle")
+
+    # 3. Use header language switcher to ensure French is set (persistent for all pages)
+    select_french_language_header(page)
+
     print("Page loaded, starting to collect product links from all pages...")
 
     # PHASE 1: Load pages in parallel to collect all product links
@@ -71,8 +98,8 @@ def run(playwright: Playwright):
 
     # First, determine how many pages exist
     # We'll check pages until we find an empty one
-    MAX_PAGES_TO_CHECK = 2  # for now limit to 3 pages for testing
-    MAX_CONCURRENT_PAGE_CHECKS = 5  # parallel page loading for discovery
+    MAX_PAGES_TO_CHECK = 1  # for now limit to 1 page for testing
+    MAX_CONCURRENT_PAGE_CHECKS = 10  # parallel page loading for discovery
 
     print("Discovering available pages...")
     page_number = 1
@@ -90,7 +117,7 @@ def run(playwright: Playwright):
                 break
 
             try:
-                p = browser.new_page()
+                p = context.new_page()
                 page_url = f"{start_url}?pageNumber={current_page_num}"
                 batch_pages.append(p)
                 batch_page_numbers.append(current_page_num)
@@ -102,7 +129,11 @@ def run(playwright: Playwright):
         found_products_in_batch = False
         for p, page_num in zip(batch_pages, batch_page_numbers):
             try:
-                p.wait_for_load_state("networkidle", timeout=10000)
+                # Wait for product links to appear (or timeout if no products)
+                try:
+                    p.wait_for_selector("a[data-testid='product-block-image-link']", timeout=15000)
+                except:
+                    pass  # No products found, will check with .all() below
                 links = p.locator("a[data-testid='product-block-image-link']").all()
 
                 if len(links) > 0:
@@ -136,7 +167,7 @@ def run(playwright: Playwright):
         # Open all pages in batch
         for page_num in batch_page_nums:
             try:
-                p = browser.new_page()
+                p = context.new_page()
                 page_url = f"{start_url}?pageNumber={page_num}"
                 batch_pages.append((p, page_num))
                 p.goto(page_url, wait_until="domcontentloaded")
@@ -146,7 +177,11 @@ def run(playwright: Playwright):
         # Collect product links from each page
         for p, page_num in batch_pages:
             try:
-                p.wait_for_load_state("networkidle", timeout=10000)
+                # Wait for product links to appear
+                try:
+                    p.wait_for_selector("a[data-testid='product-block-image-link']", timeout=15000)
+                except:
+                    pass  # No products found
                 links = p.locator("a[data-testid='product-block-image-link']").all()
 
                 for link in links:
@@ -179,7 +214,7 @@ def run(playwright: Playwright):
         # Open all pages in the batch simultaneously
         for url in batch:
             try:
-                p = browser.new_page()
+                p = context.new_page()
                 batch_pages.append((p, url))
                 p.goto(url, wait_until="domcontentloaded")
             except Exception as e:
@@ -189,8 +224,9 @@ def run(playwright: Playwright):
         for p, url in batch_pages:
             try:
                 # wait for page to be fully loaded in
-                p.wait_for_selector("h1[data-testid='product-common-header-title']", timeout=10000)
-                p.wait_for_load_state("networkidle")
+                p.wait_for_selector("h1[data-testid='product-common-header-title']", timeout=15000)
+                # Give a moment for dynamic content to load
+                p.wait_for_timeout(1000)
 
                 # extract product details
                 soup = BeautifulSoup(p.content(), "html.parser")
@@ -198,6 +234,39 @@ def run(playwright: Playwright):
                 # product name
                 product_name = soup.find("h1", {"data-testid": "product-common-header-title"})
                 product_name = product_name.text.strip() if product_name else "N/A"
+
+                # Macro nutrient patterns (website loaded in french for better matching with OFF)
+                macro_patterns = {
+                    "energy_kj": r"Energie",
+                    "energy_kcal": r"Kilocalories",
+                    "fat": r"Graisses\s+dont",
+                    "saturated_fat": r"Graisses\s+Saturées",
+                    "carbohydrates": r"Glucides\s+dont",
+                    "sugars": r"Sucres",
+                    "proteins": r"Protéines",
+                    "salt": r"Sel",
+                }
+
+                # Extract macro values
+                macros = {}
+                for macro_name, pattern in macro_patterns.items():
+                    label_td = soup.find("td", string=re.compile(pattern, re.IGNORECASE))
+                    if label_td:
+                        value_td = label_td.find_next_sibling("td")
+                        if value_td:
+                            # Extract numeric value (e.g. "42 kcal" -> 42.0)
+                            value_text = value_td.get_text(strip=True)
+                            match = re.search(r"([\d,.]+)", value_text)
+                            if match:
+                                # Replace comma with dot for float parsing
+                                macros[macro_name] = float(match.group(1).replace(",", "."))
+
+                # Skip products without any macro info (likely non-food items or alcohol, ...)
+                if not macros:
+                    print(f"Skipping (no nutrition info): {product_name}")
+                    continue
+
+ 
 
                 # promotion info
                 product_promotion = soup.find("div", {"data-testid": "tag-promo-label"})
@@ -234,7 +303,8 @@ def run(playwright: Playwright):
                     "promotion": product_promotion,
                     "promotion_from": product_promotion_from,
                     "promotion_to": product_promotion_to,
-                    "url": url
+                    "url": url,
+                    "macros": macros  # nutrition info scraped from Delhaize
                 }
 
                 product_full.append(current_product)
@@ -256,7 +326,7 @@ with sync_playwright() as playwright:
     product_full = run(playwright)
 
 print("Sending data to API...")
-api_url = "http://localhost/products/batch-upload-delhaize"
+api_url = "http://localhost:8081/products/batch-upload-delhaize"
 
 try:
     # Send data to API (JSON)
