@@ -9,10 +9,11 @@ services:
       dockerfile: Dockerfile
     container_name: smartpromo_api
     environment:
-      # BELANGRIJK: Hier komt je Supabase connectie string
-      # Mode=session is nodig voor transacties in serverless omgevingen (pooler)
+      # Mode = session is needed for transactions in serverless environments (pooler)
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./backend/app/data:/app/app/data    # OpenFoodFacts SQLite + CSV
     expose:
       - "8000"      # Only visible to nginx within the same Docker network
     depends_on:
@@ -20,7 +21,7 @@ services:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     
-    # DNS fix - forceer Google/Cloudflare DNS
+    # DNS fix - force Google/Cloudflare DNS
     dns:
       - 8.8.8.8
       - 8.8.4.4

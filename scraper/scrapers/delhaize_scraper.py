@@ -256,7 +256,7 @@ with sync_playwright() as playwright:
     product_full = run(playwright)
 
 print("Sending data to API...")
-api_url = "http://localhost/products/batch-upload-delhaize"
+api_url = "http://localhost:8081/products/batch-upload-delhaize"
 
 try:
     # Send data to API (JSON)
