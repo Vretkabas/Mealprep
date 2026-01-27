@@ -11,7 +11,7 @@ class LoginPage extends StatelessWidget {
       resizeToAvoidBottomInset: true, 
       body: Stack(
         children: [
-          // --- 1. ACHTERGROND ---
+          // --- 1. ACHTERGROND (DE WOLKEN) ---
           Positioned(
             top: 0,
             left: 0,
@@ -33,7 +33,7 @@ class LoginPage extends StatelessWidget {
             ),
           ),
 
-          // --- 2. DE INHOUD ---
+          // --- 2. DE INHOUD (LOGO & INPUTS) ---
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -44,7 +44,7 @@ class LoginPage extends StatelessWidget {
                   children: [
                     const SizedBox(height: 40),
                     
-                    // Logo Container
+                    // Logo Container (Vergroot conform jouw wens)
                     Container(
                       width: 200,
                       height: 200,
@@ -75,7 +75,7 @@ class LoginPage extends StatelessWidget {
                     
                     const SizedBox(height: 60),
 
-                    // Inputs
+                    // Email veld
                     TextField(
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.person, color: darkBlue),
@@ -86,6 +86,7 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
+                    // Password veld
                     TextField(
                       obscureText: true,
                       decoration: InputDecoration(
@@ -98,10 +99,18 @@ class LoginPage extends StatelessWidget {
 
                     const SizedBox(height: 60),
 
-                    // Knoppen
-                    _buildButton("Login", darkBlue),
+                    // --- KNOPPEN MET NAVIGATIE ---
+                    _buildButton("Login", darkBlue, () {
+                      print("Inloggen...");
+                      // Hier kun je later de login-logica toevoegen
+                    }),
+                    
                     const SizedBox(height: 20),
-                    _buildButton("Register", darkBlue),
+
+                    _buildButton("Register", darkBlue, () {
+                      // Navigeer naar de registratie pagina
+                      Navigator.pushNamed(context, '/register');
+                    }),
                     
                     const SizedBox(height: 40),
                   ],
@@ -114,12 +123,13 @@ class LoginPage extends StatelessWidget {
     );
   }
 
-  Widget _buildButton(String text, Color color) {
+  // De aangepaste knop-functie die een actie (onTap) accepteert
+  Widget _buildButton(String text, Color color, VoidCallback onTap) {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: onTap, // Voert de functie uit die we meegeven
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black87,
@@ -132,7 +142,8 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-// --- CLIPPERS ---
+// --- CLIPPERS (Design behouden) ---
+
 class TopWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

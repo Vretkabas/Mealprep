@@ -4,8 +4,9 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
-// Zorg dat je dit bestand op de juiste plek hebt staan, pas het pad evt. aan:
+
 import 'login_page.dart'; 
+import 'register_page.dart';
 
 // import 'screens/home_screen.dart'; // Deze heb ik even uitgezet omdat HomeScreen ook onderin dit bestand staat
 import 'screens/barcode_scanner_screen.dart';
@@ -75,6 +76,7 @@ class MyApp extends StatelessWidget {
         '/camera': (_) => const CameraScanScreen(),
         // NIEUWE ROUTE TOEGEVOEGD:
         '/login': (_) => const LoginPage(), 
+        '/register': (_) => const RegisterPage(),
       },
     );
   }
