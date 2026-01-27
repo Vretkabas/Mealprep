@@ -1,26 +1,5 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'MealPrep Login',
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFE8ECEF),
-        primarySwatch: Colors.blueGrey,
-      ),
-      home: const LoginPage(),
-    );
-  }
-}
-
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
@@ -29,11 +8,10 @@ class LoginPage extends StatelessWidget {
     final Color darkBlue = const Color(0xFF345069);
     
     return Scaffold(
-      // ResizeToAvoidBottomInset voorkomt dat de layout verspringt bij het toetsenbord
       resizeToAvoidBottomInset: true, 
       body: Stack(
         children: [
-          // --- 1. ACHTERGROND (DE WOLKEN) ---
+          // --- 1. ACHTERGROND ---
           Positioned(
             top: 0,
             left: 0,
@@ -55,7 +33,7 @@ class LoginPage extends StatelessWidget {
             ),
           ),
 
-          // --- 2. DE INHOUD (LOGO & INPUTS) ---
+          // --- 2. DE INHOUD ---
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -64,26 +42,26 @@ class LoginPage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 40), // Iets meer ruimte aan de bovenkant
+                    const SizedBox(height: 40),
                     
-                    // Logo Container (VERGROOT)
+                    // Logo Container
                     Container(
-                      width: 200, // Was 130
-                      height: 200, // Was 130
+                      width: 200,
+                      height: 200,
                       decoration: BoxDecoration(
                         color: Colors.grey[300]?.withOpacity(0.9),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1),
-                            blurRadius: 15, // Iets zachtere schaduw
+                            blurRadius: 15,
                             spreadRadius: 2,
                           )
                         ],
                       ),
                       child: ClipOval(
                         child: Padding(
-                          padding: const EdgeInsets.all(20.0), // Padding aangepast voor groter logo
+                          padding: const EdgeInsets.all(20.0),
                           child: Image.asset(
                             'assets/images/Logo_mealprep.jpg',
                             fit: BoxFit.contain,
@@ -95,11 +73,9 @@ class LoginPage extends StatelessWidget {
                       ),
                     ),
                     
-                    // De "MealPrep" tekst is hier VERWIJDERD.
+                    const SizedBox(height: 60),
 
-                    const SizedBox(height: 60), // Ruimte tussen logo en inputs
-
-                    // Email veld
+                    // Inputs
                     TextField(
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.person, color: darkBlue),
@@ -110,7 +86,6 @@ class LoginPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Password veld
                     TextField(
                       obscureText: true,
                       decoration: InputDecoration(
@@ -157,7 +132,7 @@ class LoginPage extends StatelessWidget {
   }
 }
 
-// --- CLIPPERS VOOR DE WOLKEN (Ongewijzigd) ---
+// --- CLIPPERS ---
 class TopWaveClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

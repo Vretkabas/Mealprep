@@ -4,10 +4,10 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
-import 'screens/home_screen.dart';
+// Zorg dat je dit bestand op de juiste plek hebt staan, pas het pad evt. aan:
+import 'login_page.dart'; 
 
-// Setup Dio (HTTP Client)
-// ⬇SCREENS IMPORTEREN
+// import 'screens/home_screen.dart'; // Deze heb ik even uitgezet omdat HomeScreen ook onderin dit bestand staat
 import 'screens/barcode_scanner_screen.dart';
 import 'screens/camera_scan_screen.dart';
 
@@ -66,13 +66,15 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
 
-      // Startscherm
+      // Startscherm (Dit is nu nog HomeScreen voor de test)
       home: const HomeScreen(),
 
       //  Routes
       routes: {
         '/scan': (_) => const BarcodeScannerScreen(),
         '/camera': (_) => const CameraScanScreen(),
+        // NIEUWE ROUTE TOEGEVOEGD:
+        '/login': (_) => const LoginPage(), 
       },
     );
   }
@@ -94,50 +96,76 @@ class HomeScreen extends ConsumerWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.shopping_cart, size: 80, color: Colors.green),
-            const SizedBox(height: 20),
-
-            const Text(
-              "Backend Status:",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 10),
-
-            apiStatus.when(
-              data: (data) => Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(data, textAlign: TextAlign.center),
+        child: SingleChildScrollView( // Scroll view toegevoegd voor kleine schermen
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.shopping_cart, size: 80, color: Colors.green),
+              const SizedBox(height: 20),
+          
+              const Text(
+                "Backend Status:",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              error: (err, _) => Text(
-                "Error: $err",
-                style: const TextStyle(color: Colors.red),
+          
+              const SizedBox(height: 10),
+          
+              apiStatus.when(
+                data: (data) => Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(data, textAlign: TextAlign.center),
+                ),
+                error: (err, _) => Text(
+                  "Error: $err",
+                  style: const TextStyle(color: Colors.red),
+                ),
+                loading: () => const CircularProgressIndicator(),
               ),
-              loading: () => const CircularProgressIndicator(),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Test backend opnieuw
-            ElevatedButton(
-              onPressed: () => ref.refresh(apiCheckProvider),
-              child: const Text("Test Verbinding Opnieuw"),
-            ),
-
-            const SizedBox(height: 20),
-
-            //  START SCAN FLOW
-            ElevatedButton.icon(
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text("Scan product"),
-              onPressed: () {
-                Navigator.pushNamed(context, '/scan');
-              },
-            ),
-          ],
+          
+              const SizedBox(height: 20),
+          
+              // Test backend opnieuw
+              ElevatedButton(
+                onPressed: () => ref.refresh(apiCheckProvider),
+                child: const Text("Test Verbinding Opnieuw"),
+              ),
+          
+              const SizedBox(height: 20),
+          
+              //  START SCAN FLOW
+              ElevatedButton.icon(
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text("Scan product"),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/scan');
+                },
+              ),
+              
+              const SizedBox(height: 40),
+              const Divider(),
+              const SizedBox(height: 10),
+          
+              // ============================================
+              //  TIJDELIJKE NAVIGATIE NAAR LOGIN PAGINA
+              // ============================================
+              const Text("Tijdelijke Navigatie:", style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 10),
+              
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueGrey, // Opvallende kleur
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                ),
+                icon: const Icon(Icons.login),
+                label: const Text("Ga naar Login Design"),
+                onPressed: () {
+                  // Hiermee ga je naar de nieuwe login pagina
+                  Navigator.pushNamed(context, '/login');
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
