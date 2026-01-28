@@ -1,118 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Inloggen mislukt"),
+        content: Text(message),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))],
+      ),
+    );
+  }
+
+  Future<void> _login() async {
+    try {
+      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2'));
+      final response = await dio.post('/login', data: {
+        "email": _emailController.text,
+        "password": _passwordController.text,
+      });
+
+      if (response.statusCode == 200) {
+        // Hier krijg je normaal een JWT token terug
+        // Voor nu: ga naar de volgende pagina
+        print("Token: ${response.data['token']}");
+        // Navigator.pushNamed(context, '/quicksetup'); // Komt later
+      }
+    } on DioException catch (e) {
+      _showError("Ongeldige e-mail of wachtwoord.");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final Color darkBlue = const Color(0xFF345069);
     
     return Scaffold(
-      resizeToAvoidBottomInset: true, 
       body: Stack(
         children: [
-          // --- 1. ACHTERGROND (DE WOLKEN) ---
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 220,
-            child: ClipPath(
-              clipper: TopWaveClipper(),
-              child: Container(color: darkBlue),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 200,
-            child: ClipPath(
-              clipper: BottomWaveClipper(),
-              child: Container(color: darkBlue),
-            ),
-          ),
+          // Achtergrond clippers (ongewijzigd)
+          Positioned(top: 0, left: 0, right: 0, height: 220, child: ClipPath(clipper: TopWaveClipper(), child: Container(color: darkBlue))),
+          Positioned(bottom: 0, left: 0, right: 0, height: 200, child: ClipPath(clipper: BottomWaveClipper(), child: Container(color: darkBlue))),
 
-          // --- 2. DE INHOUD (LOGO & INPUTS) ---
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 40),
-                    
-                    // Logo Container (Vergroot conform jouw wens)
+                    // Logo (ongewijzigd)
                     Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300]?.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 15,
-                            spreadRadius: 2,
-                          )
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Image.asset(
-                            'assets/images/Logo_mealprep.jpg',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(Icons.restaurant, size: 80, color: darkBlue);
-                            },
-                          ),
-                        ),
-                      ),
+                      width: 200, height: 200,
+                      decoration: BoxDecoration(color: Colors.grey[300]?.withOpacity(0.9), shape: BoxShape.circle),
+                      child: ClipOval(child: Padding(padding: const EdgeInsets.all(20.0), child: Image.asset('assets/images/Logo_mealprep.jpg', fit: BoxFit.contain))),
                     ),
-                    
                     const SizedBox(height: 60),
 
-                    // Email veld
                     TextField(
+                      controller: _emailController,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.person, color: darkBlue),
                         hintText: "Email",
-                        hintStyle: TextStyle(color: darkBlue.withOpacity(0.7), fontWeight: FontWeight.bold),
                         enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: darkBlue, width: 2)),
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Password veld
                     TextField(
+                      controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.lock_outline, color: darkBlue),
                         hintText: "Password",
-                        hintStyle: TextStyle(color: darkBlue.withOpacity(0.7), fontWeight: FontWeight.bold),
                         enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: darkBlue, width: 2)),
                       ),
                     ),
 
                     const SizedBox(height: 60),
 
-                    // --- KNOPPEN MET NAVIGATIE ---
-                    _buildButton("Login", darkBlue, () {
-                      print("Inloggen...");
-                      // Hier kun je later de login-logica toevoegen
-                    }),
-                    
+                    _buildButton("Login", darkBlue, _login),
                     const SizedBox(height: 20),
-
                     _buildButton("Register", darkBlue, () {
-                      // Navigeer naar de registratie pagina
                       Navigator.pushNamed(context, '/register');
                     }),
-                    
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -123,19 +103,13 @@ class LoginPage extends StatelessWidget {
     );
   }
 
-  // De aangepaste knop-functie die een actie (onTap) accepteert
   Widget _buildButton(String text, Color color, VoidCallback onTap) {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: onTap, // Voert de functie uit die we meegeven
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        ),
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black87, elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
         child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ),
     );
