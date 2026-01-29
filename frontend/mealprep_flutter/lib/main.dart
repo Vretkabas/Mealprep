@@ -11,6 +11,7 @@ import 'register_page.dart';
 // import 'screens/home_screen.dart'; // Deze heb ik even uitgezet omdat HomeScreen ook onderin dit bestand staat
 import 'screens/barcode_scanner_screen.dart';
 import 'screens/camera_scan_screen.dart';
+import 'quick_setup/quick_setup_page_1.dart';
 
 // ===============================
 //  Setup Dio (HTTP Client)
@@ -77,6 +78,7 @@ class MyApp extends StatelessWidget {
         // NIEUWE ROUTE TOEGEVOEGD:
         '/login': (_) => const LoginPage(), 
         '/register': (_) => const RegisterPage(),
+        '/quick_setup_1': (_) => const QuickSetupPage1(),
       },
     );
   }
