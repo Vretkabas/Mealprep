@@ -12,32 +12,83 @@ class BarcodeScannerScreen extends StatefulWidget {
 
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   final MobileScannerController _controller = MobileScannerController();
-  bool _isProcessing = false; // voorkomt dubbele detecties
+  final TextEditingController _manualController = TextEditingController();
+  bool _isProcessing = false;
+
+  void _openManualInput() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Product manueel toevoegen'),
+        content: TextField(
+          controller: _manualController,
+          decoration: const InputDecoration(
+            labelText: 'Barcode of productcode',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _manualController.clear();
+              Navigator.pop(context);
+            },
+            child: const Text('Annuleer'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final code = _manualController.text.trim();
+              if (code.isEmpty) return;
+
+              Navigator.pop(context);
+              _manualController.clear();
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProductScreen(barcode: code),
+                ),
+              );
+            },
+            child: const Text('Toevoegen'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Scan barcode')),
       body: MobileScanner(
+        controller: _controller,
         onDetect: (capture) {
+          if (_isProcessing) return;
+
           final barcodes = capture.barcodes;
           if (barcodes.isEmpty) return;
 
           final code = barcodes.first.rawValue;
           if (code == null) return;
 
-          print('Gescande barcode: $code');
+          _isProcessing = true;
 
-          // Open nieuw scherm en haal product op daar
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ProductScreen(barcode: code),
             ),
-          );
-        }
-
-      )
+          ).then((_) {
+            _isProcessing = false;
+          });
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openManualInput,
+        icon: const Icon(Icons.edit),
+        label: const Text('Manueel toevoegen'),
+      ),
     );
   }
 }

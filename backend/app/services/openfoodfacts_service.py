@@ -1,33 +1,60 @@
-import requests
-
-
-# Het product via de barcode ophalen
+import sqlite3
+from pathlib import Path
+ 
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "openfoodfacts.db"
+ 
+ 
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+ 
+ 
+# Het product via de barcode ophalen (uit SQLite)
 def get_product_by_barcode(barcode: str) -> dict | None:
     try:
-        response = requests.get(f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json", timeout=5)
-        if response.status_code != 200:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+ 
+        cursor.execute(
+            """
+            SELECT
+                code,
+                product_name,
+                brands,
+                energy_kcal_100g,
+                proteins_100g,
+                carbohydrates_100g,
+                fat_100g,
+                sugars_100g,
+                salt_100g
+            FROM products
+            WHERE code = ?
+            LIMIT 1
+            """,
+            (barcode,),
+        )
+ 
+        row = cursor.fetchone()
+        conn.close()
+ 
+        if not row:
             return None
-        # haal de gegevens van het product uit de json
-        data = response.json()
-        product = data.get("product")
-        if not product:
-            return None
-
-        nutriments = product.get("nutriments", {})
-        # geef de waardes mee
+ 
         return {
-            "barcode": barcode,
-            "name": product.get("product_name"),
-            "brands": product.get("brands"),
+            "barcode": row["code"],
+            "name": row["product_name"],
+            "brands": row["brands"],
             "nutriments": {
-                "energy_kcal": nutriments.get("energy-kcal_100g"),
-                "proteins": nutriments.get("proteins_100g"),
-                "carbohydrates": nutriments.get("carbohydrates_100g"),
-                "fat": nutriments.get("fat_100g"),
-                "sugars": nutriments.get("sugars_100g"),
-                "salt": nutriments.get("salt_100g"),
-            }
+                "energy_kcal": row["energy_kcal_100g"],
+                "proteins": row["proteins_100g"],
+                "carbohydrates": row["carbohydrates_100g"],
+                "fat": row["fat_100g"],
+                "sugars": row["sugars_100g"],
+                "salt": row["salt_100g"],
+            },
         }
+ 
     except Exception as e:
-        print("Fout bij ophalen product:", e)
+        print("Fout bij ophalen product uit DB:", e)
         return None
