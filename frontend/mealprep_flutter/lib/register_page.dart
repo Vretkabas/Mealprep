@@ -15,7 +15,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  // Functie voor de popups
+  // Functie voor de popups (nog steeds nodig voor errors)
   void _showPopup(String title, String message, {bool success = false}) {
     showDialog(
       context: context,
@@ -26,7 +26,7 @@ class _RegisterPageState extends State<RegisterPage> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              if (success) Navigator.of(context).pop(); // Terug naar login na succes
+              if (success) Navigator.of(context).pop(); 
             },
             child: const Text("OK"),
           ),
@@ -36,25 +36,32 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _register() async {
+    // 1. Validatie: check of wachtwoorden gelijk zijn
     if (_passwordController.text != _confirmPasswordController.text) {
       _showPopup("Fout", "Wachtwoorden komen niet overeen.");
       return;
     }
 
     try {
-      // Dio aanroep naar je backend (IP uit main.dart gebruiken)
-      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2')); // Verander naar jouw server IP
+      // 2. API Call
+      // LET OP: Gebruik '10.0.2.2' voor Android Emulator, of je lokale IP voor fysiek device
+      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2')); 
       
       final response = await dio.post('/register', data: {
         "username": _usernameController.text,
         "email": _emailController.text,
-        "password": _passwordController.text, // De backend moet dit hashen met Bcrypt!
+        "password": _passwordController.text,
       });
 
+      // 3. Succes afhandeling
       if (response.statusCode == 201 || response.statusCode == 200) {
-        _showPopup("Succes", "Je bent succesvol geregistreerd!", success: true);
+        // AANGEPAST: Direct navigeren naar de Quick Setup (Pagina 1)
+        // pushReplacementNamed zorgt dat je niet terug kan naar 'register'
+        Navigator.pushReplacementNamed(context, '/quick_setup_1');
       }
+
     } on DioException catch (e) {
+      // 4. Fout afhandeling
       if (e.response?.statusCode == 409) {
         _showPopup("Account bestaat al", "Dit e-mailadres is al geregistreerd.");
       } else {
@@ -84,7 +91,7 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Column(
             children: [
-              // Logo sectie (ongewijzigd)
+              // Logo sectie
               Container(
                 width: 160, height: 160,
                 decoration: BoxDecoration(color: const Color(0xFFD0F0C0).withOpacity(0.5), shape: BoxShape.circle),
@@ -94,7 +101,7 @@ class _RegisterPageState extends State<RegisterPage> {
               Text("MealPrep", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: brandGreen)),
               const SizedBox(height: 40),
 
-              // Input velden met controllers
+              // Input velden
               _buildTextField("Username", false, textDark, _usernameController),
               const SizedBox(height: 20),
               _buildTextField("Email", false, textDark, _emailController),
@@ -105,6 +112,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
               const SizedBox(height: 50),
 
+              // Register knop
               SizedBox(
                 width: double.infinity,
                 height: 55,
