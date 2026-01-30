@@ -9,13 +9,15 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // Controllers om de tekst uit de velden te halen
+  // Controllers
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  // Functie voor de popups (nog steeds nodig voor errors)
+  // Loading state om te laten zien dat we bezig zijn
+  bool _isLoading = false;
+
   void _showPopup(String title, String message, {bool success = false}) {
     showDialog(
       context: context,
@@ -26,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              if (success) Navigator.of(context).pop(); 
+              if (success && mounted) Navigator.of(context).pop(); 
             },
             child: const Text("OK"),
           ),
@@ -36,16 +38,28 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _register() async {
-    // 1. Validatie: check of wachtwoorden gelijk zijn
+    // 1. Validatie
     if (_passwordController.text != _confirmPasswordController.text) {
       _showPopup("Fout", "Wachtwoorden komen niet overeen.");
       return;
     }
 
+    // Zet laden aan (UI update)
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      // 2. API Call
-      // LET OP: Gebruik '10.0.2.2' voor Android Emulator, of je lokale IP voor fysiek device
-      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2')); 
+      print("--- START REGISTRATIE ---"); // Debug info
+      
+      // Let op: Dit IP werkt ALLEEN op de Android Emulator. 
+      // Gebruik je een echte telefoon? Dan moet je het IP van je laptop gebruiken (bv 192.168.x.x)
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://10.0.2.2', 
+        connectTimeout: const Duration(seconds: 10), // Timeout instellen
+      )); 
+      
+      print("Data versturen naar: http://10.0.2.2/register");
       
       final response = await dio.post('/register', data: {
         "username": _usernameController.text,
@@ -53,19 +67,41 @@ class _RegisterPageState extends State<RegisterPage> {
         "password": _passwordController.text,
       });
 
-      // 3. Succes afhandeling
+      print("Server antwoord: ${response.statusCode}");
+
+      // BELANGRIJK: Check of de widget nog bestaat na het wachten
+      if (!mounted) return;
+
       if (response.statusCode == 201 || response.statusCode == 200) {
-        // AANGEPAST: Direct navigeren naar de Quick Setup (Pagina 1)
-        // pushReplacementNamed zorgt dat je niet terug kan naar 'register'
+        print("Succes! Navigeren naar Quick Setup...");
+        
+        // Gebruik pushReplacementNamed. Zorg dat '/quick_setup_1' in main.dart staat.
         Navigator.pushReplacementNamed(context, '/quick_setup_1');
       }
 
     } on DioException catch (e) {
-      // 4. Fout afhandeling
-      if (e.response?.statusCode == 409) {
-        _showPopup("Account bestaat al", "Dit e-mailadres is al geregistreerd.");
+      print("ERROR: ${e.message}");
+      if (e.response != null) {
+        print("Server error data: ${e.response?.data}");
+        print("Server error status: ${e.response?.statusCode}");
+        
+        if (e.response?.statusCode == 409) {
+          _showPopup("Account bestaat al", "Dit e-mailadres is al geregistreerd.");
+        } else {
+          _showPopup("Fout", "Server fout: ${e.response?.statusCode}");
+        }
       } else {
-        _showPopup("Fout", "Er is iets misgegaan: ${e.message}");
+        // Geen response (server uit of verkeerd IP)
+        _showPopup("Verbindingsfout", "Kan server niet bereiken. Check of Python draait en het IP klopt.");
+      }
+    } catch (e) {
+      print("ONBEKENDE FOUT: $e");
+    } finally {
+      // Zet laden uit, ongeacht of het gelukt is of niet
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -91,7 +127,7 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Column(
             children: [
-              // Logo sectie
+              // Logo
               Container(
                 width: 160, height: 160,
                 decoration: BoxDecoration(color: const Color(0xFFD0F0C0).withOpacity(0.5), shape: BoxShape.circle),
@@ -101,7 +137,7 @@ class _RegisterPageState extends State<RegisterPage> {
               Text("MealPrep", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: brandGreen)),
               const SizedBox(height: 40),
 
-              // Input velden
+              // Inputs
               _buildTextField("Username", false, textDark, _usernameController),
               const SizedBox(height: 20),
               _buildTextField("Email", false, textDark, _emailController),
@@ -112,14 +148,19 @@ class _RegisterPageState extends State<RegisterPage> {
 
               const SizedBox(height: 50),
 
-              // Register knop
+              // Register Button met Laad-indicator
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _register,
+                  onPressed: _isLoading ? null : _register, // Knop uit als we laden
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: textDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-                  child: const Text("Register", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: _isLoading 
+                    ? const SizedBox(
+                        height: 20, width: 20, 
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)
+                      )
+                    : const Text("Register", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 40),

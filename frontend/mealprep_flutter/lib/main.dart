@@ -78,8 +78,7 @@ class MyApp extends StatelessWidget {
         // NIEUWE ROUTE TOEGEVOEGD:
         '/login': (_) => const LoginPage(), 
         '/register': (_) => const RegisterPage(),
-        '/register': (_) => const RegisterPage(),
-  '/quick_setup_1': (_) => const QuickSetupPage1(),
+        '/quick_setup_1': (_) => const QuickSetupPage1(), 
       },
     );
   }
