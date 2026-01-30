@@ -4,14 +4,14 @@ from bs4 import BeautifulSoup
 import re
 import random
 import time
-
+import requests
 
 def run(playwright: Playwright):
     chrome = playwright.chromium
 
     # Launch browser with explicit args to avoid bot detection
     browser = chrome.launch(
-        headless=False,
+        headless=True,
         args=[
             "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
@@ -108,6 +108,10 @@ def run(playwright: Playwright):
     print(f"\n[yellow]Waiting for filtered results...[/yellow]")
     time.sleep(random.uniform(2.0, 3.0))
 
+    # TEST MODE: Set to True to only scrape 1 page for faster testing
+    TEST_MODE = True
+    MAX_TEST_PAGES = 1
+
     index = 1
     while True:
         print(f"\n[yellow]Processing page {index}...[/yellow]")
@@ -165,6 +169,11 @@ def run(playwright: Playwright):
         # If no new products found, we've reached the end
         if new_single == 0 and new_multi == 0:
             print(f"\n[yellow]No new products on page {index}, stopping.[/yellow]")
+            break
+
+        # TEST MODE: Stop after MAX_TEST_PAGES
+        if TEST_MODE and index >= MAX_TEST_PAGES:
+            print(f"\n[yellow]TEST MODE: Stopping after {MAX_TEST_PAGES} page(s)[/yellow]")
             break
 
         # Try to navigate to next page via "Load more" button
@@ -259,7 +268,7 @@ def run(playwright: Playwright):
         """)
 
     def scrape_product(page_obj, product_url, product_index, total):
-        """Scrape a single product for discount and barcode"""
+        """Scrape a single product for discount and barcode(s)"""
         try:
             print(f"[yellow]Product {product_index}/{total}: {product_url}[/yellow]")
 
@@ -268,42 +277,128 @@ def run(playwright: Playwright):
 
             soup = BeautifulSoup(page_obj.content(), "html.parser")
 
-            # Get discount (e.g. "-50%" or "1+1 GRATIS")
+            # Get discount - check multiple possible locations
             discount = None
+
+            # Method 1: Look in div.promos__row--benefits > strong
             promo_div = soup.find("div", class_="promos__row--benefits")
             if promo_div:
-                # Look for strong tag (for -50% or 1+1 GRATIS)
                 strong = promo_div.find("strong")
                 if strong:
                     discount = strong.get_text(strip=True)
 
-            # Get link to fic.colruytgroup.com
-            barcode = None
+            # Method 2: Look in span.promos_description > strong (alternative structure)
+            if not discount:
+                promo_span = soup.find("span", class_="promos_description")
+                if promo_span:
+                    strong = promo_span.find("strong")
+                    if strong:
+                        discount = strong.get_text(strip=True)
+
+            # Method 3: Look for any strong with percentage or GRATIS pattern
+            if not discount:
+                for strong in soup.find_all("strong"):
+                    text = strong.get_text(strip=True)
+                    if "%" in text or "GRATIS" in text.upper():
+                        discount = text
+                        break
+
+            # Get link to fic.colruytgroup.com or rti.colruytgroup.com for barcodes
+            barcodes = []
+
+            # Try multiple locations for the product info link
+            info_link = None
+            info_url = None
+
+            # Helper function to check if URL is a valid product info link
+            def is_product_info_url(url):
+                if not url:
+                    return False
+                return "fic.colruytgroup.com" in url or "rti.colruytgroup.com" in url
+
+            # Method 1: Look in product-detail__product-description-details
             detail_div = soup.find("div", class_="product-detail__product-description-details")
             if detail_div:
-                fic_link = detail_div.find("a", href=lambda x: x and "fic.colruytgroup.com" in x)
-                if fic_link:
-                    fic_url = fic_link.get("href")
+                info_link = detail_div.find("a", href=lambda x: is_product_info_url(x))
 
-                    # Visit fic page to get barcode
-                    try:
-                        page_obj.goto(fic_url, wait_until="domcontentloaded")
-                        time.sleep(random.uniform(0.5, 1.5))
+            # Method 2: Look anywhere on the page for fic or rti link
+            if not info_link:
+                info_link = soup.find("a", href=lambda x: is_product_info_url(x))
 
-                        fic_soup = BeautifulSoup(page_obj.content(), "html.parser")
+            # Method 3: Look for link with "productinfo" or "voedingswaarde" text
+            if not info_link:
+                for link in soup.find_all("a"):
+                    link_text = link.get_text(strip=True).lower()
+                    if "productinfo" in link_text or "voedingswaarde" in link_text or "product informatie" in link_text:
+                        href = link.get("href", "")
+                        if is_product_info_url(href):
+                            info_link = link
+                            break
 
-                        # Find barcode (GTIN) in span with id="current_gtin"
-                        gtin_span = fic_soup.find("span", id="current_gtin")
+            if info_link:
+                info_url = info_link.get("href")
+                print(f"[cyan]  -> Product info URL: {info_url}[/cyan]")
+
+                # Visit product info page to get barcode(s)
+                try:
+                    page_obj.goto(info_url, wait_until="domcontentloaded")
+                    time.sleep(random.uniform(0.5, 1.5))
+
+                    info_soup = BeautifulSoup(page_obj.content(), "html.parser")
+
+                    # Method 1: Find ALL elements with data-gtin attribute
+                    gtin_elements = info_soup.find_all(attrs={"data-gtin": True})
+                    for elem in gtin_elements:
+                        gtin = elem.get("data-gtin")
+                        if gtin and gtin not in barcodes:
+                            barcodes.append(gtin)
+
+                    # Method 2: Look for barcode-list container with spans
+                    barcode_list = info_soup.find(attrs={"aria-controls": "barcode-list"})
+                    if barcode_list:
+                        parent = barcode_list.find_parent()
+                        if parent:
+                            for span in parent.find_all("span", attrs={"data-gtin": True}):
+                                gtin = span.get("data-gtin")
+                                if gtin and gtin not in barcodes:
+                                    barcodes.append(gtin)
+
+                    # Method 3: Check span with id="current_gtin" (fallback)
+                    if not barcodes:
+                        gtin_span = info_soup.find("span", id="current_gtin")
                         if gtin_span:
-                            barcode = gtin_span.get_text(strip=True)
+                            gtin_text = gtin_span.get_text(strip=True)
+                            if gtin_text and gtin_text not in barcodes:
+                                barcodes.append(gtin_text)
 
-                    except Exception as e:
-                        print(f"[red]Error fetching barcode: {e}[/red]")
+                    # Method 4: Look for GTIN/EAN in table rows or definition lists (RTI pages)
+                    if not barcodes:
+                        # Look for table cells or spans with "GTIN", "EAN", "Barcode" labels
+                        for elem in info_soup.find_all(["td", "dd", "span", "div"]):
+                            text = elem.get_text(strip=True)
+                            # Check if it's a 13-14 digit barcode
+                            if re.match(r'^\d{12,14}$', text):
+                                if text not in barcodes:
+                                    barcodes.append(text)
+
+                    # Method 5: Search page text for barcode patterns
+                    if not barcodes:
+                        page_text = info_soup.get_text()
+                        # Find all 13-digit numbers (EAN-13 format)
+                        ean_matches = re.findall(r'\b(\d{13})\b', page_text)
+                        for ean in ean_matches:
+                            if ean not in barcodes:
+                                barcodes.append(ean)
+
+                except Exception as e:
+                    print(f"[red]Error fetching barcode: {e}[/red]")
+            else:
+                print(f"[red]  -> No product info link (fic/rti) found on product page[/red]")
 
             return {
                 "url": product_url,
                 "discount": discount,
-                "barcode": barcode
+                "barcodes": barcodes  # Return list of barcodes instead of single
             }
 
         except Exception as e:
@@ -311,7 +406,7 @@ def run(playwright: Playwright):
             return {
                 "url": product_url,
                 "discount": None,
-                "barcode": None
+                "barcodes": []
             }
 
     # Process products in batches of 5
@@ -327,15 +422,22 @@ def run(playwright: Playwright):
             page_to_use = pages[i]
             result = scrape_product(page_to_use, product_url, batch_start + i + 1, total_products)
 
-            # Only add if both discount AND barcode are present
-            if result["discount"] and result["barcode"]:
-                product_data.append(result)
-                print(f"[green]  Discount: {result['discount']} | Barcode: {result['barcode']}[/green]")
+            # Only add if both discount AND at least one barcode are present
+            if result["discount"] and result["barcodes"]:
+                # Add each barcode as separate entry (API will determine which one matches)
+                for barcode in result["barcodes"]:
+                    product_data.append({
+                        "url": result["url"],
+                        "discount": result["discount"],
+                        "barcode": barcode
+                    })
+                barcodes_str = ", ".join(result["barcodes"])
+                print(f"[green]  Discount: {result['discount']} | Barcodes: {barcodes_str}[/green]")
             else:
                 missing = []
                 if not result["discount"]:
                     missing.append("discount")
-                if not result["barcode"]:
+                if not result["barcodes"]:
                     missing.append("barcode")
                 print(f"[red]  Skipped (missing {', '.join(missing)})[/red]")
 
@@ -366,6 +468,73 @@ def run(playwright: Playwright):
     return product_data, product_promotion_from, product_promotion_to
 
 
+def send_to_api(product_data: list, promotion_from: str, promotion_to: str, api_url: str = "http://localhost:8081"):
+    """
+    Send scraped product data to the API.
 
-with sync_playwright() as playwright:
-    product_full = run(playwright)
+    Args:
+        product_data: List of products with url, discount, and barcode
+        promotion_from: Start date of promotion (e.g. "29/1")
+        promotion_to: End date of promotion (e.g. "4/2")
+        api_url: Base URL of the API
+    """
+    endpoint = f"{api_url}/products/batch-upload-colruyt"
+
+    payload = {
+        "products": [
+            {
+                "url": item["url"],
+                "discount": item["discount"],
+                "barcode": item["barcode"]
+            }
+            for item in product_data
+        ],
+        "promotion_from": promotion_from,
+        "promotion_to": promotion_to
+    }
+
+    print(f"\n[bold yellow]Sending {len(product_data)} products to API...[/bold yellow]")
+    print(f"[cyan]Endpoint: {endpoint}[/cyan]")
+    print(f"[cyan]Promotion period: {promotion_from} - {promotion_to}[/cyan]")
+
+    try:
+        response = requests.post(endpoint, json=payload, timeout=60)
+        response.raise_for_status()
+
+        result = response.json()
+
+        print(f"\n[bold green]========================================[/bold green]")
+        print(f"[bold green]API RESPONSE[/bold green]")
+        print(f"[bold green]========================================[/bold green]")
+        print(f"[green]Status: {result.get('status')}[/green]")
+        print(f"[green]Total processed: {result.get('total')}[/green]")
+        print(f"[green]Matched in OpenFoodFacts: {result.get('matched')}[/green]")
+        print(f"[yellow]Not found in OpenFoodFacts: {result.get('not_found')}[/yellow]")
+        print(f"[red]Errors: {result.get('errors')}[/red]")
+
+        return result
+
+    except requests.exceptions.ConnectionError:
+        print(f"[bold red]ERROR: Could not connect to API at {api_url}[/bold red]")
+        print(f"[red]Make sure the backend server is running![/red]")
+        return None
+    except requests.exceptions.Timeout:
+        print(f"[bold red]ERROR: API request timed out[/bold red]")
+        return None
+    except requests.exceptions.HTTPError as e:
+        print(f"[bold red]ERROR: API returned error: {e}[/bold red]")
+        return None
+    except Exception as e:
+        print(f"[bold red]ERROR: {e}[/bold red]")
+        return None
+
+
+if __name__ == "__main__":
+    with sync_playwright() as playwright:
+        product_data, promotion_from, promotion_to = run(playwright)
+
+        # Send to API if we have valid products
+        if product_data:
+            send_to_api(product_data, promotion_from, promotion_to)
+        else:
+            print(f"\n[yellow]No valid products to send to API[/yellow]")
