@@ -1,5 +1,16 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+String _getBaseUrl() {
+  if (kIsWeb) {
+    return 'http://localhost:8081';
+  } else if (Platform.isAndroid) {
+    return 'http://10.0.2.2:8081';
+  } else {
+    return 'http://localhost:8081';
+  }
+}
 
 class ObjectScanService {
   final Dio dio;
@@ -12,7 +23,7 @@ class ObjectScanService {
     });
 
     final response = await dio.post(
-      'http://10.0.2.2:8000/scan/image', // emulator
+      '${_getBaseUrl()}/scan/image',
       data: formData,
     );
 
