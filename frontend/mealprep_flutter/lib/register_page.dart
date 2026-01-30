@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-String _getBaseUrl() {
-  if (kIsWeb) {
-    return 'http://localhost:8081';
-  } else if (Platform.isAndroid) {
-    return 'http://10.0.2.2:8081';
-  } else {
-    return 'http://localhost:8081';
-  }
-}
+// get supabase client
+final supabase = Supabase.instance.client;
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -50,7 +41,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _register() async {
-    // 1. Validatie
+    // Validation
     if (_passwordController.text != _confirmPasswordController.text) {
       _showPopup("Fout", "Wachtwoorden komen niet overeen.");
       return;
@@ -62,53 +53,55 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      print("--- START REGISTRATIE ---"); // Debug info
-      
-      final baseUrl = _getBaseUrl();
-      final dio = Dio(BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-      ));
+      print("--- START REGISTRATIE MET SUPABASE ---");
 
-      print("Data versturen naar: $baseUrl/register");
-      
-      final response = await dio.post('/register', data: {
-        "username": _usernameController.text,
-        "email": _emailController.text,
-        "password": _passwordController.text,
-      });
+      // =============================================
+      // supabase signup function
+      // =============================================
+      final response = await supabase.auth.signUp(
+        email: _emailController.text.trim(),      // .trim() remove spaces
+        password: _passwordController.text,
+        data: {
+          'username': _usernameController.text,   // saved in user_metadata
+        },
+      );
 
-      print("Server antwoord: ${response.statusCode}");
-
-      // BELANGRIJK: Check of de widget nog bestaat na het wachten
+      // =============================================
+      // Check result
+      // =============================================
+      // response.user contains user info if successful
       if (!mounted) return;
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        print("Succes! Navigeren naar Quick Setup...");
-        
-        // Gebruik pushReplacementNamed. Zorg dat '/quick_setup_1' in main.dart staat.
+      if (response.user != null) {
+        print("Succes! User ID: ${response.user!.id}");
+        print("Email: ${response.user!.email}");
+
+        // go to next page
         Navigator.pushReplacementNamed(context, '/quick_setup_1');
+      } else {
+        // happens if email confirmation is required
+        _showPopup(
+          "Check je email",
+          "We hebben een bevestigingslink gestuurd naar ${_emailController.text}",
+          success: true,
+        );
       }
 
-    } on DioException catch (e) {
-      print("ERROR: ${e.message}");
-      if (e.response != null) {
-        print("Server error data: ${e.response?.data}");
-        print("Server error status: ${e.response?.statusCode}");
-        
-        if (e.response?.statusCode == 409) {
-          _showPopup("Account bestaat al", "Dit e-mailadres is al geregistreerd.");
-        } else {
-          _showPopup("Fout", "Server fout: ${e.response?.statusCode}");
-        }
-      } else {
-        // Geen response (server uit of verkeerd IP)
-        _showPopup("Verbindingsfout", "Kan server niet bereiken. Check of Python draait en het IP klopt.");
-      }
+    // =============================================
+    // error handling
+    // =============================================
+    } on AuthException catch (e) {
+      print("AUTH ERROR: ${e.message}");
+
+      // supabase shows error messages directly in e.message
+      _showPopup("Registratie mislukt", e.message);
+
     } catch (e) {
+      // other error (network issues, etc)
       print("ONBEKENDE FOUT: $e");
+      _showPopup("Fout", "Er ging iets mis. Probeer het opnieuw.");
     } finally {
-      // Zet laden uit, ongeacht of het gelukt is of niet
+      // turn off loading (UI update)
       if (mounted) {
         setState(() {
           _isLoading = false;
