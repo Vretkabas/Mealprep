@@ -19,3 +19,7 @@ Openfoodsfacts api
 https://openfoodfacts.github.io/openfoodfacts-server/api/tutorial-off-api/ ==> Openfoodfacts api
 https://pub.dev/packages/mobile_scanner ==> mobile scanner
 https://pub.dev/packages/fl_chart ==> piechart
+
+auth:
+https://supabase.com/blog/flutter-authentication
+https://supabase.com/docs/guides/getting-started/tutorials/with-flutter
