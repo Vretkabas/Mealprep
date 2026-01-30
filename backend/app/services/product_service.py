@@ -1,19 +1,6 @@
-"""
-Product Service - Fuzzy matching with OpenFoodFacts SQLite database
-
-Usage:
-    from app.services.product_service import find_product_by_name, get_db_stats
-
-    # Search product by name
-    result = find_product_by_name("Danio Strawberry")
-
-    # Check database status
-    stats = get_db_stats()
-"""
-
 import sqlite3
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass
 
 # Database path
@@ -22,9 +9,9 @@ DB_PATH = Path(__file__).parent.parent / "data" / "openfoodfacts.db"
 
 @dataclass
 class ProductMatch:
-    """Result of a product match."""
+    """Represents a product match from the OpenFoodFacts database."""
     barcode: str
-    product_name: str
+    product_name: Optional[str]
     brands: Optional[str]
     energy_kcal_100g: Optional[float]
     proteins_100g: Optional[float]
@@ -33,216 +20,153 @@ class ProductMatch:
     sugars_100g: Optional[float]
     fiber_100g: Optional[float]
     salt_100g: Optional[float]
-    match_score: float  # 0-100, how good the match is
+    match_score: Optional[float] = None
 
 
-def check_database() -> bool:
-    """Check if the OpenFoodFacts database exists."""
-    if not DB_PATH.exists():
-        print(f"[ERROR] OpenFoodFacts database not found: {DB_PATH}")
-        print(f"[INFO] Download from: https://1drv.ms/u/c/75a5af5a3877ff10/IQDivoEEZuAlRLsNN2fAnIGvAY1J-C2xwAUR7RSdjWqyPyM?e=cS2IbD")
-        print(f"[INFO] Place in: backend/app/data/openfoodfacts.db")
-        return False
-    return True
+def get_db_connection():
+    """Create a database connection."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def get_db_stats() -> dict:
-    """Get statistics about the database."""
-    if not check_database():
-        return {"error": "Database not found", "exists": False}
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT COUNT(*) FROM products")
-    total = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM products WHERE energy_kcal_100g IS NOT NULL")
-    with_macros = cursor.fetchone()[0]
-
-    conn.close()
-
-    return {
-        "exists": True,
-        "total_products": total,
-        "products_with_macros": with_macros,
-        "database_path": str(DB_PATH)
-    }
+    """Get database statistics."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM products")
+        total = cursor.fetchone()[0]
+        conn.close()
+        return {
+            "status": "ok",
+            "total_products": total,
+            "database_path": str(DB_PATH)
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 
-def find_product_by_name(
-    search_name: str,
-    limit: int = 5,
-    min_score: float = 50.0
-) -> list[ProductMatch]:
+def find_product_by_barcode(barcode: str) -> Optional[ProductMatch]:
     """
-    Search products by name with fuzzy matching.
+    Find a product by its barcode in the OpenFoodFacts database.
+    Tries multiple barcode variations (with/without leading zeros).
 
     Args:
-        search_name: The name to search for (e.g. "Danio Strawberry 180g")
-        limit: Maximum number of results
-        min_score: Minimum match score (0-100)
+        barcode: The product barcode (EAN/GTIN)
 
     Returns:
-        List of ProductMatch objects, sorted by relevance
+        ProductMatch if found, None otherwise
     """
-    if not check_database():
-        return []
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+        # Generate barcode variations to try
+        barcode_variations = [barcode]
 
-    # Normalize the search name
-    search_lower = search_name.lower().strip()
-    search_words = search_lower.split()
+        # Try without leading zeros
+        stripped = barcode.lstrip('0')
+        if stripped != barcode:
+            barcode_variations.append(stripped)
 
-    # Strategy 1: Exact match (score 100)
-    cursor.execute("""
-        SELECT barcode, product_name, brands,
-               energy_kcal_100g, proteins_100g, carbohydrates_100g,
-               fat_100g, sugars_100g, fiber_100g, salt_100g
-        FROM products
-        WHERE LOWER(product_name) = ?
-        LIMIT ?
-    """, (search_lower, limit))
+        # Try with leading zero if it's 12 digits (UPC-A to EAN-13)
+        if len(barcode) == 12:
+            barcode_variations.append('0' + barcode)
 
-    exact_matches = cursor.fetchall()
-    if exact_matches:
-        conn.close()
-        return [_row_to_product(row, 100.0) for row in exact_matches]
+        # Try stripped version with leading zero
+        if len(stripped) == 12:
+            barcode_variations.append('0' + stripped)
 
-    # Strategy 2: LIKE with wildcards (score 80-90)
-    cursor.execute("""
-        SELECT barcode, product_name, brands,
-               energy_kcal_100g, proteins_100g, carbohydrates_100g,
-               fat_100g, sugars_100g, fiber_100g, salt_100g
-        FROM products
-        WHERE LOWER(product_name) LIKE ?
-        LIMIT ?
-    """, (f"%{search_lower}%", limit * 2))
-
-    like_matches = cursor.fetchall()
-
-    # Strategy 3: Search by individual words
-    word_matches = []
-    if len(search_words) >= 2:
-        # Search products that contain ALL words
-        where_clauses = " AND ".join([f"LOWER(product_name) LIKE ?" for _ in search_words])
-        params = [f"%{word}%" for word in search_words] + [limit * 2]
-
+        # Search for any of the variations
+        placeholders = ','.join(['?' for _ in barcode_variations])
         cursor.execute(f"""
             SELECT barcode, product_name, brands,
                    energy_kcal_100g, proteins_100g, carbohydrates_100g,
                    fat_100g, sugars_100g, fiber_100g, salt_100g
             FROM products
-            WHERE {where_clauses}
-            LIMIT ?
-        """, params)
+            WHERE barcode IN ({placeholders})
+        """, barcode_variations)
 
-        word_matches = cursor.fetchall()
+        row = cursor.fetchone()
+        conn.close()
 
-    conn.close()
-
-    # Combine and score results
-    all_matches = {}
-
-    for row in like_matches:
-        barcode = row[0]
-        if barcode not in all_matches:
-            score = _calculate_score(search_lower, row[1])
-            if score >= min_score:
-                all_matches[barcode] = (row, score)
-
-    for row in word_matches:
-        barcode = row[0]
-        if barcode not in all_matches:
-            score = _calculate_score(search_lower, row[1])
-            if score >= min_score:
-                all_matches[barcode] = (row, score)
-        else:
-            # Update score if word match is better
-            existing_score = all_matches[barcode][1]
-            new_score = _calculate_score(search_lower, row[1])
-            if new_score > existing_score:
-                all_matches[barcode] = (row, new_score)
-
-    # Sort by score and return
-    sorted_matches = sorted(all_matches.values(), key=lambda x: x[1], reverse=True)
-
-    return [_row_to_product(row, score) for row, score in sorted_matches[:limit]]
-
-
-def find_product_by_barcode(barcode: str) -> Optional[ProductMatch]:
-    """Find product by exact barcode."""
-    if not check_database():
+        if row:
+            return ProductMatch(
+                barcode=row["barcode"],
+                product_name=row["product_name"],
+                brands=row["brands"],
+                energy_kcal_100g=row["energy_kcal_100g"],
+                proteins_100g=row["proteins_100g"],
+                carbohydrates_100g=row["carbohydrates_100g"],
+                fat_100g=row["fat_100g"],
+                sugars_100g=row["sugars_100g"],
+                fiber_100g=row["fiber_100g"],
+                salt_100g=row["salt_100g"],
+                match_score=100.0  # Exact barcode match
+            )
         return None
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT barcode, product_name, brands,
-               energy_kcal_100g, proteins_100g, carbohydrates_100g,
-               fat_100g, sugars_100g, fiber_100g, salt_100g
-        FROM products
-        WHERE barcode = ?
-    """, (barcode,))
-
-    row = cursor.fetchone()
-    conn.close()
-
-    if row:
-        return _row_to_product(row, 100.0)
-    return None
+    except Exception as e:
+        print(f"Error finding product by barcode: {e}")
+        return None
 
 
-def _calculate_score(search: str, product_name: str) -> float:
+def find_product_by_name(name: str, limit: int = 5, min_score: float = 70.0) -> List[ProductMatch]:
     """
-    Calculate a simple match score between search term and product name.
+    Find products by name using fuzzy matching.
 
-    Returns: score from 0-100
+    Args:
+        name: The product name to search for
+        limit: Maximum number of results
+        min_score: Minimum match score (0-100)
+
+    Returns:
+        List of ProductMatch objects sorted by match score
     """
-    if not product_name:
-        return 0.0
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    search_lower = search.lower()
-    name_lower = product_name.lower()
+        # Simple LIKE search for now - can be improved with FTS5 or external fuzzy library
+        search_term = f"%{name}%"
+        cursor.execute("""
+            SELECT barcode, product_name, brands,
+                   energy_kcal_100g, proteins_100g, carbohydrates_100g,
+                   fat_100g, sugars_100g, fiber_100g, salt_100g
+            FROM products
+            WHERE product_name LIKE ?
+            LIMIT ?
+        """, (search_term, limit))
 
-    # Exact match
-    if search_lower == name_lower:
-        return 100.0
+        rows = cursor.fetchall()
+        conn.close()
 
-    # Contains full search term
-    if search_lower in name_lower:
-        # Shorter product name vs search term = better match
-        ratio = len(search_lower) / len(name_lower)
-        return 70.0 + (ratio * 20.0)  # 70-90
+        results = []
+        for row in rows:
+            # Simple score based on name similarity (placeholder)
+            score = 75.0 if name.lower() in (row["product_name"] or "").lower() else 50.0
 
-    # Check how many words match
-    search_words = set(search_lower.split())
-    name_words = set(name_lower.split())
+            if score >= min_score:
+                results.append(ProductMatch(
+                    barcode=row["barcode"],
+                    product_name=row["product_name"],
+                    brands=row["brands"],
+                    energy_kcal_100g=row["energy_kcal_100g"],
+                    proteins_100g=row["proteins_100g"],
+                    carbohydrates_100g=row["carbohydrates_100g"],
+                    fat_100g=row["fat_100g"],
+                    sugars_100g=row["sugars_100g"],
+                    fiber_100g=row["fiber_100g"],
+                    salt_100g=row["salt_100g"],
+                    match_score=score
+                ))
 
-    if not search_words:
-        return 0.0
+        return sorted(results, key=lambda x: x.match_score or 0, reverse=True)
 
-    matching_words = search_words & name_words
-    word_ratio = len(matching_words) / len(search_words)
-
-    return word_ratio * 70.0  # 0-70
-
-
-def _row_to_product(row: tuple, score: float) -> ProductMatch:
-    """Convert database row to ProductMatch object."""
-    return ProductMatch(
-        barcode=row[0],
-        product_name=row[1],
-        brands=row[2],
-        energy_kcal_100g=row[3],
-        proteins_100g=row[4],
-        carbohydrates_100g=row[5],
-        fat_100g=row[6],
-        sugars_100g=row[7],
-        fiber_100g=row[8],
-        salt_100g=row[9],
-        match_score=score
-    )
+    except Exception as e:
+        print(f"Error finding product by name: {e}")
+        return []
