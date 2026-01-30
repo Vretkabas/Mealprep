@@ -1,5 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+
+String _getBaseUrl() {
+  if (kIsWeb) {
+    return 'http://localhost:8081';
+  } else if (Platform.isAndroid) {
+    return 'http://10.0.2.2:8081';
+  } else {
+    return 'http://localhost:8081';
+  }
+}
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     try {
-      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2'));
+      final dio = Dio(BaseOptions(baseUrl: _getBaseUrl()));
       final response = await dio.post('/login', data: {
         "email": _emailController.text,
         "password": _passwordController.text,

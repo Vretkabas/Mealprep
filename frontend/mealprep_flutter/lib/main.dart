@@ -20,11 +20,11 @@ final dioProvider = Provider<Dio>((ref) {
   String baseUrl;
 
   if (kIsWeb) {
-    baseUrl = 'http://localhost';
+    baseUrl = 'http://localhost:8081';
   } else if (Platform.isAndroid) {
-    baseUrl = 'http://10.0.2.2';
+    baseUrl = 'http://10.0.2.2:8081';
   } else {
-    baseUrl = 'http://localhost';
+    baseUrl = 'http://localhost:8081';
   }
 
   return Dio(
@@ -41,7 +41,7 @@ final dioProvider = Provider<Dio>((ref) {
 final apiCheckProvider = FutureProvider<String>((ref) async {
   final dio = ref.watch(dioProvider);
   try {
-    final response = await dio.get('/mini-test');
+    final response = await dio.get('/');
     return response.data.toString();
   } catch (e) {
     return "Fout bij verbinden: $e";

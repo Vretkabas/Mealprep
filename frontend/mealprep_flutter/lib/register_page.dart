@@ -1,5 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+
+String _getBaseUrl() {
+  if (kIsWeb) {
+    return 'http://localhost:8081';
+  } else if (Platform.isAndroid) {
+    return 'http://10.0.2.2:8081';
+  } else {
+    return 'http://localhost:8081';
+  }
+}
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -52,14 +64,13 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       print("--- START REGISTRATIE ---"); // Debug info
       
-      // Let op: Dit IP werkt ALLEEN op de Android Emulator. 
-      // Gebruik je een echte telefoon? Dan moet je het IP van je laptop gebruiken (bv 192.168.x.x)
+      final baseUrl = _getBaseUrl();
       final dio = Dio(BaseOptions(
-        baseUrl: 'http://10.0.2.2', 
-        connectTimeout: const Duration(seconds: 10), // Timeout instellen
-      )); 
-      
-      print("Data versturen naar: http://10.0.2.2/register");
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+      ));
+
+      print("Data versturen naar: $baseUrl/register");
       
       final response = await dio.post('/register', data: {
         "username": _usernameController.text,
