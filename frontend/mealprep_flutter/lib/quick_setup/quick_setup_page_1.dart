@@ -86,7 +86,7 @@ class _QuickSetupPage1State extends State<QuickSetupPage1> {
                       : () {
                           print("Gekozen doel: $_selectedOption");
                           // TODO: Navigeer naar Quick Setup Pagina 2
-                          // Navigator.pushNamed(context, '/quick_setup_2');
+                          Navigator.pushNamed(context, '/quick_setup_2', arguments: _selectedOption);
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandGreen, // De groene kleur uit je design
