@@ -13,6 +13,7 @@ import 'screens/barcode_scanner_screen.dart';
 import 'screens/camera_scan_screen.dart';
 import 'quick_setup/quick_setup_page_1.dart';
 import 'quick_setup/quick_setup_page_2.dart';
+import 'quick_setup/quick_setup_page_3.dart';
 
 // ===============================
 //  Setup Dio (HTTP Client)
@@ -81,6 +82,7 @@ class MyApp extends StatelessWidget {
         '/register': (_) => const RegisterPage(),
         '/quick_setup_1': (_) => const QuickSetupPage1(), 
         '/quick_setup_2': (_) => const QuickSetupPage2(),
+        '/quick_setup_3': (_) => const QuickSetupPage3(),
       },
     );
   }

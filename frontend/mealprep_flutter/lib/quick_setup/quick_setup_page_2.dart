@@ -33,6 +33,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
       _showGdprError = !_gdprConsent;
     });
 
+    // Validatie: Formulier geldig? Geslacht gekozen? GDPR aangevinkt?
     if (_formKey.currentState!.validate() && _selectedGender.isNotEmpty && _gdprConsent) {
       _formKey.currentState!.save();
       
@@ -40,11 +41,9 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
       print("Opslaan: Leeftijd: $_age, Lengte: $_height, Personen: $_personCount");
       print("GDPR Consent gegeven: $_gdprConsent");
 
-      // Navigeer naar volgende pagina (bv. Allergieën of Dieetvoorkeur)
-      // Navigator.pushNamed(context, '/quick_setup_3'); 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Data opgeslagen & naar volgende stap...")),
-      );
+      // NAVIGATIE: Ga naar stap 3 (Activity Page)
+      Navigator.pushNamed(context, '/quick_setup_3'); 
+      
     } else if (_selectedGender.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Selecteer aub je geslacht.")),
@@ -87,7 +86,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
-                    widthFactor: 0.5, // We zijn op stap 2 (ongeveer de helft of 1/3)
+                    widthFactor: 0.5, // We zijn op stap 2 (50%)
                     child: Container(
                       decoration: BoxDecoration(
                         color: brandGreen,
@@ -107,12 +106,12 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // Icoon placeholder zoals in screenshot
+                // Icoon placeholder
                 Icon(Icons.person, size: 80, color: textDark.withOpacity(0.5)),
                 const SizedBox(height: 30),
 
                 // ============================================
-                // NIEUW: Voor hoeveel personen koken?
+                // Input: Voor hoeveel personen koken?
                 // ============================================
                 _buildLabel("Voor hoeveel personen wil je koken?", textDark),
                 const SizedBox(height: 8),
@@ -165,7 +164,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
 
                 const SizedBox(height: 16),
 
-                // Current Weight (Text Input is vaak fijner voor gewicht dan dropdown)
+                // Current Weight
                 _buildLabel("Current weight (kg)", textDark),
                 const SizedBox(height: 8),
                 _buildNumberInput(
