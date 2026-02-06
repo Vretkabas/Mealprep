@@ -40,7 +40,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
       print("GDPR Consent (Activity): $_gdprConsent");
 
       // TODO: Navigeer naar de volgende pagina (bijv. Dashboard of Resultaat)
-      // Navigator.pushNamed(context, '/quick_setup_complete'); 
+      Navigator.pushNamed(context, '/quick_setup_4');
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Activiteit opgeslagen! (Klaar voor volgende stap)")),
