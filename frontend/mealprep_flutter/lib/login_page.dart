@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Supabase client ophalen (al geïnitialiseerd in main.dart)
+final supabase = Supabase.instance.client;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,6 +14,9 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  // loading state for button
+  bool _isLoading = false;
 
   void _showError(String message) {
     showDialog(
@@ -24,21 +30,71 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    try {
-      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2'));
-      final response = await dio.post('/login', data: {
-        "email": _emailController.text,
-        "password": _passwordController.text,
-      });
+    // =============================================
+    // turn on loading
+    // =============================================
+    setState(() {
+      _isLoading = true;
+    });
 
-      if (response.statusCode == 200) {
-        // Hier krijg je normaal een JWT token terug
-        // Voor nu: ga naar de volgende pagina
-        print("Token: ${response.data['token']}");
-        // Navigator.pushNamed(context, '/quicksetup'); // Komt later
+    try {
+      print("--- START LOGIN MET SUPABASE ---");
+
+      // =============================================
+      // signinwithpassword function
+      // =============================================
+      final response = await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      // =============================================
+      // get result
+      // =============================================
+      if (!mounted) return;
+
+      if (response.user != null) {
+        print("Login success! User ID: ${response.user!.id}");
+        print("Email: ${response.user!.email}");
+
+        // Session contains JWT token (automatically saved by Supabase)
+        print("Session token: ${response.session?.accessToken}");
+
+        // Show success message
+        // TODO: Replace with navigation to home page later
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Login Successful"),
+            content: Text("Welcome back, ${response.user!.email}!"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
       }
-    } on DioException catch (e) {
-      _showError("Ongeldige e-mail of wachtwoord.");
+
+    // =============================================
+    // Error handling
+    // =============================================
+    } on AuthException catch (e) {
+      print("AUTH ERROR: ${e.message}");
+
+      _showError(e.message);
+
+    } catch (e) {
+      print("ONBEKENDE FOUT: $e");
+      _showError("Er ging iets mis. Probeer het opnieuw.");
+    } finally {
+      // turn off loading
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -88,7 +144,27 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 60),
 
-                    _buildButton("Login", darkBlue, _login),
+                    // Login button with loading state
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,  // disable button when loading
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              )
+                            : const Text("Login", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     _buildButton("Register", darkBlue, () {
                       Navigator.pushNamed(context, '/register');

@@ -22,3 +22,6 @@ https://pub.dev/packages/fl_chart ==> piechart
 
 GDPR Compliance voor medische gegevens:
 https://gdpr.eu/tag/gdpr/ 
+auth:
+https://supabase.com/blog/flutter-authentication
+https://supabase.com/docs/guides/getting-started/tutorials/with-flutter

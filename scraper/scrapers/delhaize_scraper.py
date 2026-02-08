@@ -304,7 +304,8 @@ def run(playwright: Playwright):
                     "promotion_from": product_promotion_from,
                     "promotion_to": product_promotion_to,
                     "url": url,
-                    "macros": macros  # nutrition info scraped from Delhaize
+                    "macros": macros,  # nutrition info scraped from Delhaize
+                    "store_name": "Delhaize"  # Store identifier for backend
                 }
 
                 product_full.append(current_product)

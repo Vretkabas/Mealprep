@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase Flutter package (auth)
 
 import 'login_page.dart'; 
 import 'register_page.dart';
@@ -23,11 +23,11 @@ final dioProvider = Provider<Dio>((ref) {
   String baseUrl;
 
   if (kIsWeb) {
-    baseUrl = 'http://localhost';
+    baseUrl = 'http://localhost:8081';
   } else if (Platform.isAndroid) {
-    baseUrl = 'http://10.0.2.2';
+    baseUrl = 'http://10.0.2.2:8081';
   } else {
-    baseUrl = 'http://localhost';
+    baseUrl = 'http://localhost:8081';
   }
 
   return Dio(
@@ -39,24 +39,34 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 // ===============================
+//  Supabase Initialization
+// ===============================
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Supabase.initialize(
+    url: 'https://drodrhsvrybrvjlvihxk.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyb2RyaHN2cnlicnZqbHZpaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODc1ODEsImV4cCI6MjA4NDQ2MzU4MX0.BV7krCsVbGUXjqFgwroA6Jr3MhcYui0gSwR1ftCPT9Y',
+  );
+  
+  runApp(const ProviderScope(child: MyApp()));
+}
+
+// Global accessor for Supabase client
+final supabase = Supabase.instance.client;
+
+// ===============================
 //  Backend test provider
 // ===============================
 final apiCheckProvider = FutureProvider<String>((ref) async {
   final dio = ref.watch(dioProvider);
   try {
-    final response = await dio.get('/mini-test');
+    final response = await dio.get('/');
     return response.data.toString();
   } catch (e) {
     return "Fout bij verbinden: $e";
   }
 });
-
-// ===============================
-// App start
-// ===============================
-void main() {
-  runApp(const ProviderScope(child: MyApp()));
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
