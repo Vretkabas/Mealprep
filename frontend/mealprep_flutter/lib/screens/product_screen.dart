@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/food_api_service.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../services/scanned_item_service.dart';
 
 class ProductScreen extends StatefulWidget {
   final String barcode;
@@ -16,6 +17,8 @@ class _ProductScreenState extends State<ProductScreen> {
   bool loading = true;
   String? error;
 
+  final ScannedItemService scannedItemService = ScannedItemService();
+
   @override
   void initState() {
     super.initState();
@@ -26,6 +29,16 @@ class _ProductScreenState extends State<ProductScreen> {
     try {
       // Hier haal je de data op van je backend
       final data = await FoodApiService.fetchByBarcode(widget.barcode);
+
+      try {
+        await scannedItemService.logScan(
+          barcode: widget.barcode,
+          scanMode: 'barcode',
+        );
+      } catch (e) {
+        print('Warning: Failed to log scan to database: $e');
+        // Don't fail the product display if logging fails
+      }
 
       setState(() {
         product = data;

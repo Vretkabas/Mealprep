@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'screens/home_screen.dart';
 
@@ -18,17 +20,18 @@ final dioProvider = Provider<Dio>((ref) {
   String baseUrl;
 
   if (kIsWeb) {
-    baseUrl = 'http://localhost';
+    baseUrl = 'http://localhost:8081';
   } else if (Platform.isAndroid) {
-    baseUrl = 'http://10.0.2.2';
+    baseUrl = 'http://10.0.2.2:8081'; 
   } else {
-    baseUrl = 'http://localhost';
+    baseUrl = 'http://localhost:8081';  
   }
 
   return Dio(
     BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 5),
+      receiveTimeout: const Duration(seconds: 5),
     ),
   );
 });
@@ -49,7 +52,16 @@ final apiCheckProvider = FutureProvider<String>((ref) async {
 // ===============================
 // App start
 // ===============================
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

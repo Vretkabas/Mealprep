@@ -19,7 +19,7 @@ def get_product_by_barcode(barcode: str) -> dict | None:
         cursor.execute(
             """
             SELECT
-                code,
+                barcode,
                 product_name,
                 brands,
                 energy_kcal_100g,
@@ -29,7 +29,7 @@ def get_product_by_barcode(barcode: str) -> dict | None:
                 sugars_100g,
                 salt_100g
             FROM products
-            WHERE code = ?
+            WHERE barcode = ?
             LIMIT 1
             """,
             (barcode,),
@@ -42,7 +42,7 @@ def get_product_by_barcode(barcode: str) -> dict | None:
             return None
  
         return {
-            "barcode": row["code"],
+            "barcode": row["barcode"],
             "name": row["product_name"],
             "brands": row["brands"],
             "nutriments": {
