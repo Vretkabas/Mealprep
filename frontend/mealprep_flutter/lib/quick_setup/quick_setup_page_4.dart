@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../home_page.dart';
 
 class QuickSetupPage4 extends StatefulWidget {
   const QuickSetupPage4({super.key});
@@ -64,10 +65,13 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
     }
 
     print("Definitieve selectie: $_selectedItems");
-    
-    // Navigatie naar de app home
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profiel succesvol aangemaakt!")),
+
+    // --- NAVIGATIE NAAR HOME ---
+    // pushAndRemoveUntil zorgt ervoor dat je niet terug kan klikken naar de setup
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+      (route) => false, 
     );
   }
 
