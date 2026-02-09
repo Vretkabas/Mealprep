@@ -163,7 +163,9 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _buildStatCard(_scansThisWeek.toString(), "scans", Colors.greenAccent.withOpacity(0.1), brandGreen),
+                  const SizedBox(width: 12),
                   _buildStatCard("€${_savedThisWeek.toInt()}", "saved", Colors.blueAccent.withOpacity(0.1), Colors.blue),
+                  const SizedBox(width: 12),
                   _buildStatCard(_healthScore.toString(), "Health", Colors.purpleAccent.withOpacity(0.1), Colors.purple),
                 ],
               ),
