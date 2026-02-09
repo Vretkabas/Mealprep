@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mealprep_flutter/quick_setup/quick_setup_data.dart';  // save all choices in this object then to backend
 
 class QuickSetupPage2 extends StatefulWidget {
   const QuickSetupPage2({super.key});
@@ -41,8 +42,17 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
       print("Opslaan: Leeftijd: $_age, Lengte: $_height, Personen: $_personCount");
       print("GDPR Consent gegeven: $_gdprConsent");
 
-      // NAVIGATIE: Ga naar stap 3 (Activity Page)
-      Navigator.pushNamed(context, '/quick_setup_3'); 
+      final data = ModalRoute.of(context)!.settings.arguments as QuickSetupData;
+  
+      // fill in data object
+      data.personsCount = _personCount;
+      data.age = _age;
+      data.height = _height;
+      data.weightCurrent = _currentWeight;
+      data.weightTarget = _desiredWeight;
+      data.gender = _selectedGender;
+  
+      Navigator.pushNamed(context, '/quick_setup_3', arguments: data); 
       
     } else if (_selectedGender.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -53,6 +63,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
 
   @override
   Widget build(BuildContext context) {
+    final data = ModalRoute.of(context)!.settings.arguments as QuickSetupData;
     // Kleuren uit je design
     final Color brandGreen = const Color(0xFF00BFA5); 
     final Color backgroundGrey = const Color(0xFFF5F7F9);
