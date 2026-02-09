@@ -13,6 +13,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379
     volumes:
+      - ./backend/app:/app/app              # Live reload all backend code
       - ./backend/app/data:/app/app/data    # OpenFoodFacts SQLite + CSV
     expose:
       - "8000"      # Only visible to nginx within the same Docker network
