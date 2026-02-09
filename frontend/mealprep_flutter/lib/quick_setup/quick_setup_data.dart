@@ -1,4 +1,4 @@
-// this file will save the data for the quick setup process, 
+// this file will save the data for the quick setup process,
 // such as the selected meals and the number of servings of all 4 pages and send to endpoint
 
 class QuickSetupData {
@@ -13,16 +13,17 @@ class QuickSetupData {
   List<String>? allergies;
 
   // convert to JSON for sending to backend
+  // keys must match backend Pydantic model (snake_case)
   Map<String, dynamic> toJson() {
     return {
       'goal': goal == 0 ? 'lose' : goal == 1 ? 'maintain' : 'gain',
-      'personsCount': personsCount,
+      'persons_count': personsCount,
       'age': age,
       'height': height,
-      'weightCurrent': weightCurrent,
-      'weightTarget': weightTarget,
+      'weight_current': weightCurrent,
+      'weight_target': weightTarget,
       'gender': gender,
-      'activityLevel': activityLevel,
+      'activity_level': activityLevel,
       'allergies': allergies,
     };
   }
