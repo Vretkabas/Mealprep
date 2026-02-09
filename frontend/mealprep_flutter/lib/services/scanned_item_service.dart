@@ -1,42 +1,63 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ScannedItemService {
-  final _client = Supabase.instance.client;
-
-  // Test user ID for development/testing
-  static const String testUserId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-
+  // backend url
+  static const String baseUrl = 'http://localhost:8000'; 
+  
   Future<void> logScan({
     required String barcode,
     required String scanMode,
     String? productId,
     Map<String, dynamic>? aiAnalysis,
     int? healthScore,
+    String? userId,
   }) async {
     try {
-      // Try to get the current authenticated user
-      final user = _client.auth.currentUser;
-      final userId = user?.id ?? testUserId;
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/scans/log'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'barcode': barcode,
+          'scan_mode': scanMode,
+          'product_id': productId,
+          'ai_analysis': aiAnalysis,
+          'health_score': healthScore,
+          'user_id': userId,
+        }),
+      );
 
-      if (user == null) {
-        print('Warning: No authenticated user. Using test user ID: $testUserId');
+      if (response.statusCode == 200) {
+        print('Scan logged successfully');
       } else {
-        print('Logging scan for user ${user.id}: $barcode');
+        print('Failed to log scan: ${response.statusCode}');
+        print('Response: ${response.body}');
+        throw Exception('Failed to log scan');
       }
-
-      await _client.from('scanned_items').insert({
-        'user_id': userId,
-        'product_id': productId,
-        'barcode': barcode,
-        'scan_mode': scanMode,
-        'ai_analysis': aiAnalysis,
-        'health_score': healthScore,
-        'scanned_at': DateTime.now().toIso8601String(),
-      });
-
-      print('Scan logged successfully for user: $userId');
     } catch (e) {
       print('Error logging scan: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getUserScans({
+    required String userId,
+    int limit = 50,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/scans/user/$userId?limit=$limit'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['scans']);
+      } else {
+        throw Exception('Failed to fetch scans');
+      }
+    } catch (e) {
+      print('Error fetching scans: $e');
       rethrow;
     }
   }
