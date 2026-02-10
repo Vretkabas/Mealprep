@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mealprep_flutter/quick_setup/quick_setup_data.dart';
 import '../home_page.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class QuickSetupPage4 extends StatefulWidget {
   const QuickSetupPage4({super.key});
@@ -49,7 +54,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
     });
   }
 
-  void _finishSetup() {
+  void _finishSetup() async {
     // Check of er iets gekozen is (minstens 1 allergie of 'None')
     if (_selectedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,12 +71,41 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
 
     print("Definitieve selectie: $_selectedItems");
 
+    // get data and send it to backend
+    final data = ModalRoute.of(context)!.settings.arguments as QuickSetupData;
+    data.allergies = _selectedItems.toList();
+
+    final userId = Supabase.instance.client.auth.currentUser!.id;
+
+    // Determine base URL
+    String baseUrl;
+    if (kIsWeb) {
+      baseUrl = 'http://localhost:8081';
+    } else if (Platform.isAndroid) {
+      baseUrl = 'http://10.0.2.2:8081';
+    } else {
+      baseUrl = 'http://localhost:8081';
+    }
+
+    try {
+      final response = await Dio().post(
+        '$baseUrl/user/preferences',
+        data: {
+          'user_id': userId,
+          ...data.toJson(),
+        },
+      );
+      print("Response: ${response.data}");
+    } catch (e) {
+      print("Error sending preferences: $e");
+    }
+
     // --- NAVIGATIE NAAR HOME ---
     // pushAndRemoveUntil zorgt ervoor dat je niet terug kan klikken naar de setup
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const HomePage()),
-      (route) => false, 
+      (route) => false,
     );
   }
 
