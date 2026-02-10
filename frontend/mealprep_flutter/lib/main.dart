@@ -45,12 +45,14 @@ final dioProvider = Provider<Dio>((ref) {
 // ===============================
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  await dotenv.load(fileName: ".env");
+
   await Supabase.initialize(
-    url: 'https://drodrhsvrybrvjlvihxk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyb2RyaHN2cnlicnZqbHZpaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODc1ODEsImV4cCI6MjA4NDQ2MzU4MX0.BV7krCsVbGUXjqFgwroA6Jr3MhcYui0gSwR1ftCPT9Y',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-  
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -73,18 +75,7 @@ final apiCheckProvider = FutureProvider<String>((ref) async {
 // ===============================
 // App start
 // ===============================
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
-
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-  );
-
-  runApp(const ProviderScope(child: MyApp()));
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
