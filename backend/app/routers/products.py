@@ -13,25 +13,57 @@ router = APIRouter()
 def parse_discount_percentage(discount: str) -> Optional[float]:
     """
     Parse discount string to percentage.
-    Examples: "-50%" -> 50.0, "1+1 GRATIS" -> 50.0, "2+1 GRATIS" -> 33.33
+    Examples:
+        "-50%" -> 50.0
+        "1+1 GRATIS" -> 50.0
+        "2+1 GRATIS" -> 33.33
+        "2de aan -50%" -> 25.0 (50% off on half the items = 25% total)
+        "2de aan halve prijs" -> 25.0
+        "2e gratis" -> 50.0
     """
     try:
+        import re
         discount = discount.strip().upper()
+
+        # Handle "Xde/Xe aan -Y%" format (e.g. "2de aan -50%")
+        # 50% off on the 2nd item = 25% total discount
+        match_xde = re.search(r'(\d+)\s*(?:DE|E)\s+AAN\s+[–\-]?\s*(\d+)\s*%', discount)
+        if match_xde:
+            nth_item = int(match_xde.group(1))
+            pct_off = float(match_xde.group(2))
+            # Discount applies to 1 out of nth_item items
+            return round(pct_off / nth_item, 2)
+
+        # Handle "Xde/Xe aan halve prijs" (e.g. "2de aan halve prijs" = 25%)
+        match_halve = re.search(r'(\d+)\s*(?:DE|E)\s+AAN\s+HALVE\s+PRIJS', discount)
+        if match_halve:
+            nth_item = int(match_halve.group(1))
+            return round(50.0 / nth_item, 2)
+
+        # Handle "Xde/Xe gratis" (e.g. "2de gratis" = 50%, "3de gratis" = 33.33%)
+        match_gratis = re.search(r'(\d+)\s*(?:DE|E)\s+GRATIS', discount)
+        if match_gratis:
+            nth_item = int(match_gratis.group(1))
+            return round(100.0 / nth_item, 2)
 
         # Handle percentage format: "-50%", "50%", "-25%"
         if "%" in discount:
-            num = discount.replace("%", "").replace("-", "").strip()
-            return float(num)
+            num = re.search(r'(\d+(?:[.,]\d+)?)\s*%', discount)
+            if num:
+                return float(num.group(1).replace(",", "."))
 
-        # Handle "1+1 GRATIS" format (50% off)
+        # Handle generic N+M GRATIS pattern (e.g. "1+1", "2+1", "3+2")
+        match_plus = re.search(r'(\d+)\s*\+\s*(\d+)\s*GRATIS', discount)
+        if match_plus:
+            buy = int(match_plus.group(1))
+            free = int(match_plus.group(2))
+            return round(free / (buy + free) * 100, 2)
+
+        # Fallback: simple N+N patterns without GRATIS text
         if "1+1" in discount:
             return 50.0
-
-        # Handle "2+1 GRATIS" format (33.33% off)
         if "2+1" in discount:
             return 33.33
-
-        # Handle "3+1 GRATIS" format (25% off)
         if "3+1" in discount:
             return 25.0
 
@@ -106,6 +138,7 @@ class ColruytProductSchema(BaseModel):
     url: str
     discount: str
     barcode: str
+    price: Optional[float] = None  # Original price (before discount)
 
 
 # Schema for Colruyt batch upload with promotion dates
@@ -262,6 +295,7 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                 products_by_url[product.url] = {
                     "url": product.url,
                     "discount": product.discount,
+                    "price": product.price,
                     "barcodes": []
                 }
             products_by_url[product.url]["barcodes"].append(product.barcode)
@@ -294,6 +328,12 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                     else:
                         print(f"  No match for barcode {barcode}")
 
+                # Calculate original and promo price
+                original_price = product_info.get("price")
+                promo_price = None
+                if original_price and discount_pct:
+                    promo_price = round(original_price * (1 - discount_pct / 100), 2)
+
                 if match and matched_barcode:
                     # Product found in OpenFoodFacts - save with full nutrition data
                     product_id = await db.upsert_product(
@@ -315,7 +355,9 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         product_name=match.product_name or "Unknown",
                         discount_percentage=discount_pct,
                         valid_from=valid_from.date(),
-                        valid_until=valid_until.date()
+                        valid_until=valid_until.date(),
+                        original_price=original_price,
+                        promo_price=promo_price,
                     )
 
                     processed = ProcessedColruytProduct(
@@ -353,7 +395,9 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         product_name=f"Unknown Product ({first_barcode})",
                         discount_percentage=discount_pct,
                         valid_from=valid_from.date(),
-                        valid_until=valid_until.date()
+                        valid_until=valid_until.date(),
+                        original_price=original_price,
+                        promo_price=promo_price,
                     )
 
                     processed = ProcessedColruytProduct(

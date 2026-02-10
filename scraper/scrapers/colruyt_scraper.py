@@ -303,6 +303,19 @@ def run(playwright: Playwright):
                         discount = text
                         break
 
+            # Get original price from price-info spans
+            price = None
+            price_label = soup.find("div", class_="price-info__price-label")
+            if price_label:
+                rounded = price_label.find("span", class_="rounded-number")
+                decimal = price_label.find("span", class_="decimal")
+                if rounded and decimal:
+                    try:
+                        price = float(f"{rounded.get_text(strip=True)}.{decimal.get_text(strip=True)}")
+                        print(f"[cyan]  -> Price: {price}[/cyan]")
+                    except ValueError:
+                        print(f"[yellow]  -> Could not parse price[/yellow]")
+
             # Get link to fic.colruytgroup.com or rti.colruytgroup.com for barcodes
             barcodes = []
 
@@ -398,7 +411,8 @@ def run(playwright: Playwright):
             return {
                 "url": product_url,
                 "discount": discount,
-                "barcodes": barcodes  # Return list of barcodes instead of single
+                "barcodes": barcodes,  # Return list of barcodes instead of single
+                "price": price,
             }
 
         except Exception as e:
@@ -406,7 +420,8 @@ def run(playwright: Playwright):
             return {
                 "url": product_url,
                 "discount": None,
-                "barcodes": []
+                "barcodes": [],
+                "price": None,
             }
 
     # Process products in batches of 5
@@ -429,10 +444,12 @@ def run(playwright: Playwright):
                     product_data.append({
                         "url": result["url"],
                         "discount": result["discount"],
-                        "barcode": barcode
+                        "barcode": barcode,
+                        "price": result.get("price"),
                     })
                 barcodes_str = ", ".join(result["barcodes"])
-                print(f"[green]  Discount: {result['discount']} | Barcodes: {barcodes_str}[/green]")
+                price_str = f"€{result.get('price')}" if result.get("price") else "N/A"
+                print(f"[green]  Discount: {result['discount']} | Price: {price_str} | Barcodes: {barcodes_str}[/green]")
             else:
                 missing = []
                 if not result["discount"]:
@@ -459,6 +476,7 @@ def run(playwright: Playwright):
     for data in product_data:
         print(f"[blue]URL:[/blue] {data['url']}")
         print(f"  [green]Discount:[/green] {data['discount']}")
+        print(f"  [green]Price:[/green] €{data.get('price', 'N/A')}")
         print(f"  [green]Barcode:[/green] {data['barcode']}")
         print()
 
@@ -485,7 +503,8 @@ def send_to_api(product_data: list, promotion_from: str, promotion_to: str, api_
             {
                 "url": item["url"],
                 "discount": item["discount"],
-                "barcode": item["barcode"]
+                "barcode": item["barcode"],
+                "price": item.get("price"),
             }
             for item in product_data
         ],
