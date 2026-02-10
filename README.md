@@ -25,3 +25,7 @@ https://gdpr.eu/tag/gdpr/
 auth:
 https://supabase.com/blog/flutter-authentication
 https://supabase.com/docs/guides/getting-started/tutorials/with-flutter
+
+
+User settings protein calculation:
+https://reference.medscape.com/calculator/846/mifflin-st-jeor-equation
