@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/barcode_scanner_screen.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,12 +33,17 @@ class _HomePageState extends State<HomePage> {
     // Logica om naar andere pagina's te gaan
     switch (index) {
       case 0:
-        // We zijn al op Home
+         print("Navigeer naar homepage");
         break;
       case 1:
         // Scan pagina
         print("Navigeer naar Scan Pagina (via Navbar)");
-        // Navigator.pushNamed(context, '/scan'); 
+        Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const BarcodeScannerScreen(),
+        ),
+      );
         break;
       case 2:
         // Lists pagina
