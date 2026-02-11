@@ -347,13 +347,13 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         fat_g=match.fat_100g
                     )
 
-                    # Create promotion
+                    # Create promotion (store raw discount label like "1+1 GRATIS", "-50%")
                     await db.create_promotion(
                         store_id=store_id,
                         product_id=product_id,
                         barcode=matched_barcode,
                         product_name=match.product_name or "Unknown",
-                        discount_percentage=discount_pct,
+                        discount_label=discount,
                         valid_from=valid_from.date(),
                         valid_until=valid_until.date(),
                         original_price=original_price,
@@ -387,13 +387,13 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         product_name=f"Unknown Product ({first_barcode})"
                     )
 
-                    # Create promotion anyway
+                    # Create promotion anyway (store raw discount label)
                     await db.create_promotion(
                         store_id=store_id,
                         product_id=product_id,
                         barcode=first_barcode,
                         product_name=f"Unknown Product ({first_barcode})",
-                        discount_percentage=discount_pct,
+                        discount_label=discount,
                         valid_from=valid_from.date(),
                         valid_until=valid_until.date(),
                         original_price=original_price,

@@ -133,13 +133,13 @@ class DatabaseService:
         product_id: Optional[str],
         barcode: str,
         product_name: str,
-        discount_percentage: Optional[float],
+        discount_label: Optional[str],
         valid_from: date,
         valid_until: date,
         original_price: Optional[float] = None,
         promo_price: Optional[float] = None
     ) -> str:
-        """Create a new promotion."""
+        """Create a new promotion. discount_label is the raw text like '1+1 GRATIS', '-50%', '2de aan -50%'."""
         promo_id = str(uuid.uuid4())
 
         # promo_price is NOT NULL in the database, use 0.0 as default
@@ -157,7 +157,7 @@ class DatabaseService:
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
                     """,
                     promo_id, store_id, product_id, barcode, product_name,
-                    original_price, promo_price, discount_percentage,
+                    original_price, promo_price, discount_label,
                     valid_from, valid_until
                 )
             print(f"Created promotion {promo_id} for {barcode}")
