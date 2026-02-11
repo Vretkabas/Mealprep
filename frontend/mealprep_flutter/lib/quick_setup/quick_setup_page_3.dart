@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mealprep_flutter/quick_setup/quick_setup_data.dart';  // save all choices in this object then to backend
 
 class QuickSetupPage3 extends StatefulWidget {
   const QuickSetupPage3({super.key});
@@ -39,8 +40,10 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
       print("Gekozen activiteit: $_selectedActivityLevel");
       print("GDPR Consent (Activity): $_gdprConsent");
 
-      // TODO: Navigeer naar de volgende pagina (bijv. Dashboard of Resultaat)
-      Navigator.pushNamed(context, '/quick_setup_4');
+      // Data saved in Object
+      final data = ModalRoute.of(context)!.settings.arguments as QuickSetupData;
+      data.activityLevel = ['low', 'slightly_active', 'medium', 'very_active'][_selectedActivityLevel!];
+      Navigator.pushNamed(context, '/quick_setup_4', arguments: data);
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Activiteit opgeslagen! (Klaar voor volgende stap)")),
@@ -50,6 +53,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
 
   @override
   Widget build(BuildContext context) {
+    final data = ModalRoute.of(context)!.settings.arguments as QuickSetupData;
     return Scaffold(
       backgroundColor: backgroundGrey,
       appBar: AppBar(

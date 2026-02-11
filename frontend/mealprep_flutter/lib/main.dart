@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'login_page.dart'; 
 import 'home_page.dart';
@@ -24,15 +26,16 @@ final dioProvider = Provider<Dio>((ref) {
   if (kIsWeb) {
     baseUrl = 'http://localhost:8081';
   } else if (Platform.isAndroid) {
-    baseUrl = 'http://10.0.2.2:8081';
+    baseUrl = 'http://10.0.2.2:8081'; 
   } else {
-    baseUrl = 'http://localhost:8081';
+    baseUrl = 'http://localhost:8081';  
   }
 
   return Dio(
     BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 5),
+      receiveTimeout: const Duration(seconds: 5),
     ),
   );
 });
@@ -42,17 +45,37 @@ final dioProvider = Provider<Dio>((ref) {
 // ===============================
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  await dotenv.load(fileName: ".env");
+
   await Supabase.initialize(
-    url: 'https://drodrhsvrybrvjlvihxk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyb2RyaHN2cnlicnZqbHZpaHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODc1ODEsImV4cCI6MjA4NDQ2MzU4MX0.BV7krCsVbGUXjqFgwroA6Jr3MhcYui0gSwR1ftCPT9Y',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-  
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
 // Global accessor for Supabase client
 final supabase = Supabase.instance.client;
+
+// ===============================
+//  Backend test provider
+// ===============================
+final apiCheckProvider = FutureProvider<String>((ref) async {
+  final dio = ref.watch(dioProvider);
+  try {
+    final response = await dio.get('/');
+    return response.data.toString();
+  } catch (e) {
+    return "Fout bij verbinden: $e";
+  }
+});
+
+// ===============================
+// App start
+// ===============================
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

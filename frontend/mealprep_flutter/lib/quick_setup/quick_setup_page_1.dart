@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mealprep_flutter/quick_setup/quick_setup_data.dart';  // save all choices in this object then to backend
 
 class QuickSetupPage1 extends StatefulWidget {
   const QuickSetupPage1({super.key});
@@ -85,8 +86,10 @@ class _QuickSetupPage1State extends State<QuickSetupPage1> {
                       ? null // Knop is uitgeschakeld als niks is gekozen
                       : () {
                           print("Gekozen doel: $_selectedOption");
-                          // TODO: Navigeer naar Quick Setup Pagina 2
-                          Navigator.pushNamed(context, '/quick_setup_2', arguments: _selectedOption);
+                          // save data in object
+                          final data = QuickSetupData();
+                          data.goal = _selectedOption;
+                          Navigator.pushNamed(context, '/quick_setup_2', arguments: data);
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: brandGreen, // De groene kleur uit je design

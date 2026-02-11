@@ -19,12 +19,12 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchProduct(); // Hier doen we de API-call
+    _fetchProduct();
   }
 
   Future<void> _fetchProduct() async {
     try {
-      // Hier haal je de data op van je backend
+      // Backend haalt product op en scanned log
       final data = await FoodApiService.fetchByBarcode(widget.barcode);
 
       setState(() {
@@ -63,14 +63,6 @@ class _ProductScreenState extends State<ProductScreen> {
 
     double total = proteins + carbs + fat + sugars + salt;
 
-    /* Tekst voor de voedingswaarden instellen */
-    Text nutrimentText(String label, dynamic value, String unit, Color color)
-    {
-      return Text( '$label: ${value ?? '-'} $unit',
-    style: TextStyle(color: color),);
-    }
-
-    
     return Scaffold(
       appBar: AppBar(title: Text(product!['name'] ?? 'Onbekend product')),
       body: Padding(
@@ -81,41 +73,61 @@ class _ProductScreenState extends State<ProductScreen> {
             Text('Barcode: ${product!['barcode']}'),
             Text('Merken: ${product!['brands'] ?? 'Onbekend'}'),
             const SizedBox(height: 16),
-            Text('Voedingswaarden per 100g:', style:const TextStyle(fontWeight: FontWeight.bold, )),
-            Text('Energie: ${nutriments['energy_kcal'] ?? '-'} kcal', style: TextStyle(color: Colors.red)),
-            Text('Eiwitten: ${nutriments['proteins'] ?? '-'} g', style: TextStyle(color: Colors.green)),
-            Text('Koolhydraten: ${nutriments['carbohydrates'] ?? '-'} g', style: TextStyle(color: Colors.orange)),
-            Text('Vetten: ${nutriments['fat'] ?? '-'} g', style: TextStyle(color: Colors.purple)),
-            Text('Suikers: ${nutriments['sugars'] ?? '-'} g', style: TextStyle(color: Colors.blue)),
-            Text('Zout: ${nutriments['salt'] ?? '-'} g', style: TextStyle(color: Colors.pink)),
-
+            const Text(
+              'Voedingswaarden per 100g:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Energie: ${nutriments['energy_kcal'] ?? '-'} kcal',
+              style: const TextStyle(color: Colors.red),
+            ),
+            Text(
+              'Eiwitten: ${nutriments['proteins'] ?? '-'} g',
+              style: const TextStyle(color: Colors.green),
+            ),
+            Text(
+              'Koolhydraten: ${nutriments['carbohydrates'] ?? '-'} g',
+              style: const TextStyle(color: Colors.orange),
+            ),
+            Text(
+              'Vetten: ${nutriments['fat'] ?? '-'} g',
+              style: const TextStyle(color: Colors.purple),
+            ),
+            Text(
+              'Suikers: ${nutriments['sugars'] ?? '-'} g',
+              style: const TextStyle(color: Colors.blue),
+            ),
+            Text(
+              'Zout: ${nutriments['salt'] ?? '-'} g',
+              style: const TextStyle(color: Colors.pink),
+            ),
             const SizedBox(height: 24),
 
-              if (total > 0)
-                SizedBox(
-                  height: 260,
-                  child: PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 40,
-                      sections: [
-                        _pieSection(proteins, total, Colors.green),
-                        _pieSection(carbs, total, Colors.orange),
-                        _pieSection(fat, total, Colors.purple),
-                        _pieSection(sugars, total, Colors.blue),
-                        _pieSection(salt, total, Colors.pink),
-                      ],
-                    ),
+            if (total > 0)
+              SizedBox(
+                height: 260,
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 40,
+                    sections: [
+                      _pieSection(proteins, total, Colors.green),
+                      _pieSection(carbs, total, Colors.orange),
+                      _pieSection(fat, total, Colors.purple),
+                      _pieSection(sugars, total, Colors.blue),
+                      _pieSection(salt, total, Colors.pink),
+                    ],
                   ),
                 ),
+              ),
           ],
         ),
       ),
     );
   }
-}
+  }
 
-PieChartSectionData _pieSection(
+  PieChartSectionData _pieSection(
     double value,
     double total,
     Color color,
