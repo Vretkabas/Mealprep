@@ -38,12 +38,7 @@ class _HomePageState extends State<HomePage> {
       case 1:
         // Scan pagina
         print("Navigeer naar Scan Pagina (via Navbar)");
-        Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const BarcodeScannerScreen(),
-        ),
-      );
+        Navigator.push(context,MaterialPageRoute(builder: (_) => const BarcodeScannerScreen(),),);
         break;
       case 2:
         // Lists pagina
