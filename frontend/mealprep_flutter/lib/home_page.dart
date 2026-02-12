@@ -56,6 +56,7 @@ class _HomePageState extends State<HomePage> {
       case 4:
         // Profile pagina
         print("Navigeer naar Profile");
+        Navigator.pushNamed(context, '/profile');
         break;
     }
   }
