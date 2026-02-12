@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'login_page.dart'; 
 import 'home_page.dart';
 import 'register_page.dart';
+import 'settings/profile_page.dart';
 import 'screens/barcode_scanner_screen.dart';
 import 'screens/camera_scan_screen.dart';
 import 'quick_setup/quick_setup_page_1.dart';
@@ -101,6 +102,7 @@ class MyApp extends StatelessWidget {
         '/camera': (_) => const CameraScanScreen(),
         '/login': (_) => const LoginPage(), 
         '/home': (_) => const HomePage(),
+        '/profile': (_) => const ProfilePage(),
         '/register': (_) => const RegisterPage(),
         '/quick_setup_1': (_) => const QuickSetupPage1(), 
         '/quick_setup_2': (_) => const QuickSetupPage2(),
