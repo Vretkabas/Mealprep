@@ -34,6 +34,7 @@ class _HomePageState extends State<HomePage> {
     switch (index) {
       case 0:
          print("Navigeer naar homepage");
+         Navigator.pushNamed(context, '/home');
         break;
       case 1:
         // Scan pagina
