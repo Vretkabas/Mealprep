@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'edit_profile_page.dart'; // Zorg dat dit bestand bestaat
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,6 +16,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = false;
   String? _avatarUrl;
   String _email = 'Loading...';
+  String _displayName = 'User';
 
   @override
   void initState() {
@@ -29,10 +31,21 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = supabase.auth.currentUser;
       if (user != null) {
+        // Haal extra profielgegevens op (zoals naam) uit de 'profiles' tabel
+        final profileData = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .maybeSingle();
+            
         setState(() {
           _email = user.email ?? 'Geen email';
-          // We kijken of er al een avatar in de metadata zit
+          // Eerst metadata checken, dan profile table, dan fallback op email
           _avatarUrl = user.userMetadata?['avatar_url'];
+          _displayName = profileData?['full_name'] ?? 
+                         user.userMetadata?['full_name'] ?? 
+                         user.email?.split('@')[0] ?? 
+                         'User';
         });
       }
     } catch (e) {
@@ -105,7 +118,7 @@ class _ProfilePageState extends State<ProfilePage> {
       await supabase.auth.signOut();
       
       if (mounted) {
-        // Navigeer terug naar login en verwijder alle eerdere routes (zodat je niet terug kan swipen)
+        // Navigeer terug naar login en verwijder alle eerdere routes
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
     } catch (e) {
@@ -122,14 +135,12 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Lichte achtergrond zoals in screenshot
+      backgroundColor: Colors.grey[50], // Lichte achtergrond
       appBar: AppBar(
         title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // Als dit een tab is in een BottomNavBar, heb je vaak geen back button nodig.
-        // Als je wel een back button wilt (zoals in screenshot):
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -161,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ? Image.network(
                                     _avatarUrl!,
                                     fit: BoxFit.cover,
-                                    // Hack om te zorgen dat afbeelding ververst na upload (door timestamp)
+                                    // Hack om te zorgen dat afbeelding ververst
                                     key: ValueKey(_avatarUrl), 
                                     errorBuilder: (context, error, stackTrace) =>
                                         const Icon(Icons.person, size: 60, color: Colors.grey),
@@ -190,7 +201,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   // --- NAAM / EMAIL ---
                   Text(
-                    _email.split('@')[0], // Simpele manier om 'naam' te tonen uit email
+                    _displayName, 
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   Text(
@@ -203,7 +214,23 @@ class _ProfilePageState extends State<ProfilePage> {
                   // --- MENU ITEMS ---
                   // Account
                   _buildSectionTitle("Account"),
-                  _buildListTile(Icons.email, "Email", hasArrow: true),
+                  
+                  // Aangepaste Email Navigatie
+                  _buildListTile(
+                    Icons.email, 
+                    "Email", 
+                    hasArrow: true,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                      ).then((_) {
+                        // Ververs data als we terugkomen
+                        _getProfile(); 
+                      });
+                    },
+                  ),
+                  
                   _buildListTile(Icons.lock, "Password", hasArrow: true),
                   _buildListTile(Icons.delete, "Delete Account", hasArrow: true),
 
@@ -269,7 +296,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Helper Widget voor de lijst items
-  Widget _buildListTile(IconData icon, String title, {bool hasArrow = false}) {
+  Widget _buildListTile(IconData icon, String title, {bool hasArrow = false, VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -280,12 +307,10 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       child: ListTile(
-        leading: Icon(icon, color: Colors.blueAccent), // Of gebruik afbeeldingen
+        leading: Icon(icon, color: Colors.blueAccent),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
         trailing: hasArrow ? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey) : null,
-        onTap: () {
-          // Hier kun je later navigatie toevoegen
-        },
+        onTap: onTap, // Hier wordt de actie uitgevoerd
       ),
     );
   }
