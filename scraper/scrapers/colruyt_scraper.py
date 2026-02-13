@@ -277,6 +277,12 @@ def run(playwright: Playwright):
 
             soup = BeautifulSoup(page_obj.content(), "html.parser")
 
+            # Get product name from h1
+            product_name = None
+            h1 = soup.find("h1")
+            if h1:
+                product_name = h1.get_text(strip=True)
+
             # Get discount - check multiple possible locations
             discount = None
 
@@ -302,6 +308,18 @@ def run(playwright: Playwright):
                     if "%" in text or "GRATIS" in text.upper():
                         discount = text
                         break
+
+            # Parse price from price-info__price-label spans
+            price = None
+            price_label = soup.find("div", class_="price-info__price-label")
+            if price_label:
+                rounded = price_label.find("span", class_="rounded-number")
+                decimal = price_label.find("span", class_="decimal")
+                if rounded and decimal:
+                    try:
+                        price = float(f"{rounded.get_text(strip=True)}.{decimal.get_text(strip=True)}")
+                    except ValueError:
+                        price = None
 
             # Get link to fic.colruytgroup.com or rti.colruytgroup.com for barcodes
             barcodes = []
@@ -397,7 +415,9 @@ def run(playwright: Playwright):
 
             return {
                 "url": product_url,
+                "name": product_name,
                 "discount": discount,
+                "price": price,
                 "barcodes": barcodes  # Return list of barcodes instead of single
             }
 
@@ -405,7 +425,9 @@ def run(playwright: Playwright):
             print(f"[red]Error with product {product_url}: {e}[/red]")
             return {
                 "url": product_url,
+                "name": None,
                 "discount": None,
+                "price": None,
                 "barcodes": []
             }
 
@@ -428,11 +450,14 @@ def run(playwright: Playwright):
                 for barcode in result["barcodes"]:
                     product_data.append({
                         "url": result["url"],
+                        "name": result.get("name"),
                         "discount": result["discount"],
+                        "price": result.get("price"),
                         "barcode": barcode
                     })
                 barcodes_str = ", ".join(result["barcodes"])
-                print(f"[green]  Discount: {result['discount']} | Barcodes: {barcodes_str}[/green]")
+                price_str = f"€{result.get('price')}" if result.get("price") else "N/A"
+                print(f"[green]  {result.get('name', '?')} | Discount: {result['discount']} | Price: {price_str} | Barcodes: {barcodes_str}[/green]")
             else:
                 missing = []
                 if not result["discount"]:
@@ -458,7 +483,9 @@ def run(playwright: Playwright):
     print(f"\n[bold cyan]All valid products (with discount and barcode):[/bold cyan]")
     for data in product_data:
         print(f"[blue]URL:[/blue] {data['url']}")
+        print(f"  [green]Name:[/green] {data.get('name', 'N/A')}")
         print(f"  [green]Discount:[/green] {data['discount']}")
+        print(f"  [green]Price:[/green] €{data.get('price', 'N/A')}")
         print(f"  [green]Barcode:[/green] {data['barcode']}")
         print()
 
@@ -484,8 +511,10 @@ def send_to_api(product_data: list, promotion_from: str, promotion_to: str, api_
         "products": [
             {
                 "url": item["url"],
+                "name": item.get("name"),
                 "discount": item["discount"],
-                "barcode": item["barcode"]
+                "barcode": item["barcode"],
+                "price": item.get("price")
             }
             for item in product_data
         ],

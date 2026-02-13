@@ -133,18 +133,27 @@ class DatabaseService:
         product_id: Optional[str],
         barcode: str,
         product_name: str,
-        discount_percentage: Optional[float],
+        discount_label: Optional[str],
         valid_from: date,
         valid_until: date,
         original_price: Optional[float] = None,
-        promo_price: Optional[float] = None
+        promo_price: Optional[float] = None,
+        category: Optional[str] = None,
+        primary_macro: Optional[str] = None,
+        is_healthy: bool = False,
     ) -> str:
-        """Create a new promotion."""
+        """Create a new promotion. discount_label is the raw text like '1+1 GRATIS', '-50%'."""
         promo_id = str(uuid.uuid4())
 
         # promo_price is NOT NULL in the database, use 0.0 as default
         if promo_price is None:
             promo_price = 0.0
+
+        # Default category and macro if not provided
+        if not category:
+            category = "Overig"
+        if not primary_macro:
+            primary_macro = "None"
 
         try:
             async with self.pool.acquire() as conn:
@@ -153,14 +162,16 @@ class DatabaseService:
                     INSERT INTO promotions (
                         promo_id, store_id, product_id, barcode, product_name,
                         original_price, promo_price, discount_percentage,
-                        valid_from, valid_until, is_active
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+                        valid_from, valid_until, is_active,
+                        category, primary_macro, is_healthy
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, $13)
                     """,
                     promo_id, store_id, product_id, barcode, product_name,
-                    original_price, promo_price, discount_percentage,
-                    valid_from, valid_until
+                    original_price, promo_price, discount_label,
+                    valid_from, valid_until,
+                    category, primary_macro, is_healthy,
                 )
-            print(f"Created promotion {promo_id} for {barcode}")
+            print(f"Created promotion {promo_id} for {barcode} [{category}]")
             return promo_id
         except Exception as e:
             print(f"ERROR creating promotion for {barcode}: {e}")

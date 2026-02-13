@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from app.services.product_service import find_product_by_name, find_product_by_barcode, get_db_stats
 from app.services.database_service import get_database_service
+from app.services.gemini_service import enrich_products_batched
 
 router = APIRouter()
 
@@ -13,27 +14,46 @@ router = APIRouter()
 def parse_discount_percentage(discount: str) -> Optional[float]:
     """
     Parse discount string to percentage.
-    Examples: "-50%" -> 50.0, "1+1 GRATIS" -> 50.0, "2+1 GRATIS" -> 33.33
+    Supports many Colruyt promotion formats:
+      "-50%" -> 50.0
+      "1+1 GRATIS" -> 50.0
+      "2+1 GRATIS" -> 33.33
+      "2de aan -50%" -> 25.0 (half the discount applied to total)
+      "2de aan halve prijs" -> 25.0
+      "2e gratis" / "2de gratis" -> 50.0
+      "3+2 GRATIS" -> 40.0
     """
+    import re
     try:
         discount = discount.strip().upper()
 
-        # Handle percentage format: "-50%", "50%", "-25%"
+        # Handle "2de aan -50%" / "2de aan 50%" -> half discount on total
+        match_2de_pct = re.search(r'2(?:DE|E)\s+AAN\s+[- ]?(\d+(?:[.,]\d+)?)\s*%', discount)
+        if match_2de_pct:
+            pct_on_second = float(match_2de_pct.group(1).replace(",", "."))
+            # Discount applies to second item only → total discount is half
+            return round(pct_on_second / 2, 2)
+
+        # Handle "2de aan halve prijs" / "2e aan halve prijs" -> 25% total
+        if re.search(r'2(?:DE|E)\s+AAN\s+HALVE\s+PRIJS', discount):
+            return 25.0
+
+        # Handle "2e gratis" / "2de gratis" -> same as 1+1
+        if re.search(r'2(?:DE|E)\s+GRATIS', discount):
+            return 50.0
+
+        # Handle generic N+M GRATIS pattern: "1+1", "2+1", "3+1", "3+2", etc.
+        match_nm = re.search(r'(\d+)\+(\d+)\s*GRATIS', discount)
+        if match_nm:
+            n = int(match_nm.group(1))
+            m = int(match_nm.group(2))
+            # You buy N+M but only pay for N → discount = M/(N+M) * 100
+            return round(m / (n + m) * 100, 2)
+
+        # Handle simple percentage format: "-50%", "50%", "-25%"
         if "%" in discount:
             num = discount.replace("%", "").replace("-", "").strip()
             return float(num)
-
-        # Handle "1+1 GRATIS" format (50% off)
-        if "1+1" in discount:
-            return 50.0
-
-        # Handle "2+1 GRATIS" format (33.33% off)
-        if "2+1" in discount:
-            return 33.33
-
-        # Handle "3+1 GRATIS" format (25% off)
-        if "3+1" in discount:
-            return 25.0
 
         return None
     except:
@@ -104,8 +124,10 @@ class ProcessedProduct(BaseModel):
 # Schema for incoming Colruyt products from scraper
 class ColruytProductSchema(BaseModel):
     url: str
+    name: Optional[str] = None  # Product name scraped from Colruyt page <h1>
     discount: str
     barcode: str
+    price: Optional[float] = None
 
 
 # Schema for Colruyt batch upload with promotion dates
@@ -121,7 +143,6 @@ class ProcessedColruytProduct(BaseModel):
     product_name: Optional[str]
     brands: Optional[str]
     discount: str
-    discount_percentage: Optional[float]
     energy_kcal_100g: Optional[float]
     proteins_100g: Optional[float]
     carbohydrates_100g: Optional[float]
@@ -231,8 +252,9 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
     1. Get or create Colruyt store in database
     2. Group products by URL (same product may have multiple barcodes)
     3. For each URL, try barcodes until one matches in OpenFoodFacts
-    4. Save product to database (upsert)
-    5. Create promotion record with discount
+    4. Batch all product names → send to Gemini for AI enrichment (category, macro, healthy)
+    5. Save product to database (upsert)
+    6. Create promotion record with discount + Gemini enrichment
     """
     try:
         products = batch.products
@@ -261,44 +283,106 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
             if product.url not in products_by_url:
                 products_by_url[product.url] = {
                     "url": product.url,
+                    "scraped_name": product.name,  # Name from Colruyt <h1>
                     "discount": product.discount,
+                    "price": product.price,
                     "barcodes": []
                 }
             products_by_url[product.url]["barcodes"].append(product.barcode)
 
         print(f"Grouped into {len(products_by_url)} unique products")
 
+        # ====================================================
+        # PHASE 1: Match all barcodes against OpenFoodFacts
+        # ====================================================
+        url_list = list(products_by_url.keys())
+        matched_data = {}  # url -> {match, barcode, product_name, ...}
+
+        for url in url_list:
+            product_info = products_by_url[url]
+            barcodes = product_info["barcodes"]
+
+            match = None
+            matched_barcode = None
+            for barcode in barcodes:
+                match = find_product_by_barcode(barcode)
+                if match:
+                    matched_barcode = barcode
+                    print(f"  Found match for barcode {barcode}")
+                    break
+                else:
+                    print(f"  No match for barcode {barcode}")
+
+            # Name priority: scraped from Colruyt > OpenFoodFacts > fallback
+            scraped_name = product_info.get("scraped_name")
+            off_name = match.product_name if match else None
+            best_name = scraped_name or off_name or f"Unknown Product ({barcodes[0]})"
+
+            matched_data[url] = {
+                "match": match,
+                "barcode": matched_barcode or barcodes[0],
+                "product_name": best_name,
+                "is_matched": match is not None,
+            }
+
+        # ====================================================
+        # PHASE 2: Send all product names to Gemini for AI enrichment
+        # ====================================================
+        # Always send the best available name (scraped from Colruyt page)
+        product_names = [matched_data[url]["product_name"] for url in url_list]
+        print(f"\nSending {len(product_names)} products to Gemini for enrichment...")
+        enrichments = await enrich_products_batched(product_names)
+        print(f"Gemini enrichment complete: {len(enrichments)} results")
+
+        # Map enrichments back to URLs
+        enrichment_by_url = {}
+        for i, url in enumerate(url_list):
+            enrichment_by_url[url] = enrichments[i] if i < len(enrichments) else {
+                "clean_name": None, "category": "Overig", "primary_macro": "None", "is_healthy": False
+            }
+
+        # ====================================================
+        # PHASE 3: Save everything to database
+        # ====================================================
         results = {
             "matched": [],
             "not_found": [],
             "errors": []
         }
 
-        for url, product_info in products_by_url.items():
+        for url in url_list:
             try:
-                barcodes = product_info["barcodes"]
-                discount = product_info["discount"]
+                product_info = products_by_url[url]
+                match_info = matched_data[url]
+                enrichment = enrichment_by_url[url]
 
-                # Parse discount percentage
+                discount = product_info["discount"]
                 discount_pct = parse_discount_percentage(discount)
 
-                # Try each barcode until we find a match in OpenFoodFacts
-                match = None
-                matched_barcode = None
-                for barcode in barcodes:
-                    match = find_product_by_barcode(barcode)
-                    if match:
-                        matched_barcode = barcode
-                        print(f"  Found match for barcode {barcode}")
-                        break
-                    else:
-                        print(f"  No match for barcode {barcode}")
+                # Calculate prices
+                original_price = product_info.get("price")
+                promo_price = None
+                if original_price and discount_pct:
+                    promo_price = round(original_price * (1 - discount_pct / 100), 2)
 
-                if match and matched_barcode:
+                # Gemini enrichment data
+                category = enrichment.get("category", "Overig")
+                primary_macro = enrichment.get("primary_macro", "None")
+                is_healthy = enrichment.get("is_healthy", False)
+                clean_name = enrichment.get("clean_name")
+
+                match = match_info["match"]
+                barcode = match_info["barcode"]
+                product_name = match_info["product_name"]
+
+                # Name priority: Gemini clean_name > scraped Colruyt name > OpenFoodFacts > fallback
+                display_name = clean_name or product_name or "Unknown"
+
+                if match_info["is_matched"]:
                     # Product found in OpenFoodFacts - save with full nutrition data
                     product_id = await db.upsert_product(
-                        barcode=matched_barcode,
-                        product_name=match.product_name or "Unknown",
+                        barcode=barcode,
+                        product_name=display_name,
                         brand=match.brands,
                         energy_kcal=match.energy_kcal_100g,
                         proteins_g=match.proteins_100g,
@@ -307,23 +391,26 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         fat_g=match.fat_100g
                     )
 
-                    # Create promotion
                     await db.create_promotion(
                         store_id=store_id,
                         product_id=product_id,
-                        barcode=matched_barcode,
-                        product_name=match.product_name or "Unknown",
-                        discount_percentage=discount_pct,
+                        barcode=barcode,
+                        product_name=display_name,
+                        discount_label=discount,
                         valid_from=valid_from.date(),
-                        valid_until=valid_until.date()
+                        valid_until=valid_until.date(),
+                        original_price=original_price,
+                        promo_price=promo_price,
+                        category=category,
+                        primary_macro=primary_macro,
+                        is_healthy=is_healthy,
                     )
 
                     processed = ProcessedColruytProduct(
-                        barcode=matched_barcode,
-                        product_name=match.product_name,
+                        barcode=barcode,
+                        product_name=display_name,
                         brands=match.brands,
                         discount=discount,
-                        discount_percentage=discount_pct,
                         energy_kcal_100g=match.energy_kcal_100g,
                         proteins_100g=match.proteins_100g,
                         carbohydrates_100g=match.carbohydrates_100g,
@@ -338,30 +425,32 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                     results["matched"].append(processed.model_dump())
 
                 else:
-                    # No barcode matched - use first barcode and save with barcode only
-                    first_barcode = barcodes[0]
+                    # No barcode matched
                     product_id = await db.upsert_product(
-                        barcode=first_barcode,
-                        product_name=f"Unknown Product ({first_barcode})"
+                        barcode=barcode,
+                        product_name=display_name
                     )
 
-                    # Create promotion anyway
                     await db.create_promotion(
                         store_id=store_id,
                         product_id=product_id,
-                        barcode=first_barcode,
-                        product_name=f"Unknown Product ({first_barcode})",
-                        discount_percentage=discount_pct,
+                        barcode=barcode,
+                        product_name=display_name,
+                        discount_label=discount,
                         valid_from=valid_from.date(),
-                        valid_until=valid_until.date()
+                        valid_until=valid_until.date(),
+                        original_price=original_price,
+                        promo_price=promo_price,
+                        category=category,
+                        primary_macro=primary_macro,
+                        is_healthy=is_healthy,
                     )
 
                     processed = ProcessedColruytProduct(
-                        barcode=first_barcode,
-                        product_name=None,
+                        barcode=barcode,
+                        product_name=display_name,
                         brands=None,
                         discount=discount,
-                        discount_percentage=discount_pct,
                         energy_kcal_100g=None,
                         proteins_100g=None,
                         carbohydrates_100g=None,
@@ -378,7 +467,7 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
             except Exception as e:
                 results["errors"].append({
                     "url": url,
-                    "barcodes": product_info["barcodes"],
+                    "barcodes": products_by_url[url]["barcodes"],
                     "error": str(e)
                 })
 
@@ -394,6 +483,7 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
             "matched": len(results["matched"]),
             "not_found": len(results["not_found"]),
             "errors": len(results["errors"]),
+            "enriched_by_gemini": len(product_names),
             "results": results
         }
 
