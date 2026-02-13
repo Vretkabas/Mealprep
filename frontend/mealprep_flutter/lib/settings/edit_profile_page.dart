@@ -14,7 +14,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   // Controllers voor de tekstvelden
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController(); 
+  final _emailController = TextEditingController();
   final _ageController = TextEditingController();
   final _genderController = TextEditingController();
   final _heightController = TextEditingController();
@@ -65,12 +65,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _weightController.text = data['weight']?.toString() ?? '';
           _goalController.text = data['goal'] ?? '';
           _activityController.text = data['activity_level'] ?? '';
+        } else {
+          // Fallback als er nog geen record in 'profiles' is, gebruik de metadata
+          _nameController.text = user.userMetadata?['full_name'] ?? '';
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Fout bij laden: $e')),
+          SnackBar(content: Text('Fout bij laden: $e')),
         );
       }
     } finally {
@@ -78,7 +81,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  // 2. Data opslaan in Supabase (Inclusief Email Update)
+  // 2. Data opslaan in Supabase (Inclusief Metadata Update voor de Home)
   Future<void> _saveProfile() async {
     setState(() => _isLoading = true);
 
@@ -86,26 +89,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // --- A. Email Wijzigen in Auth ---
+      // --- A. Email Wijzigen in Auth (Indien aangepast) ---
       if (_emailController.text.trim() != user.email) {
-        // Update de email in de Supabase Auth tabel
         await supabase.auth.updateUser(
           UserAttributes(email: _emailController.text.trim()),
         );
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Bevestig je nieuwe e-mailadres via de link in je inbox!'),
+              content: Text('Bevestig je nieuwe e-mail via de link in je inbox!'),
               backgroundColor: Colors.orange,
             ),
           );
         }
       }
 
-      // --- B. Profielgegevens Wijzigen in Database ---
+      // --- B. Profielgegevens naar Database ('profiles' tabel) ---
       final updates = {
-        'id': user.id, 
+        'id': user.id,
         'full_name': _nameController.text,
         'age': int.tryParse(_ageController.text),
         'gender': _genderController.text,
@@ -116,8 +117,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      // Upsert = Update als het bestaat, Insert als het nieuw is
       await supabase.from('profiles').upsert(updates);
+
+      // --- C. Update Auth Metadata ---
+      // Dit zorgt ervoor dat de HomePage (die naar metadata kijkt) direct de nieuwe naam ziet
+      await supabase.auth.updateUser(
+        UserAttributes(
+          data: {'full_name': _nameController.text},
+        ),
+      );
 
       if (mounted) {
         _showSuccessDialog();
@@ -125,7 +133,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Opslaan mislukt: $e')),
+          SnackBar(content: Text('Opslaan mislukt: $e')),
         );
       }
     } finally {
@@ -137,8 +145,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void _showSuccessDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, 
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Success"),
         content: const Text("Your changes have been saved successfully!"),
         actions: [
@@ -147,7 +156,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               Navigator.of(context).pop(); // Sluit popup
               Navigator.of(context).pop(); // Ga terug naar Profile Page
             },
-            child: const Text("OK", style: TextStyle(color: Color(0xFF1B8C61))),
+            child: const Text("OK", style: TextStyle(color: Color(0xFF1B8C61), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -159,7 +168,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Settings", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Settings", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -175,7 +184,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- TABS ---
+                  // --- TABS (Visual only for now) ---
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
@@ -222,7 +231,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   _buildTextField(_nameController, "John"),
                   
                   _buildLabel("Email"),
-                  // readOnly staat nu op FALSE zodat je de mail kunt aanpassen
                   _buildTextField(_emailController, "email@example.com", readOnly: false),
 
                   Row(
@@ -294,6 +302,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1B8C61),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
                       ),
                       child: const Text(
                         "Save Changes",
@@ -306,7 +315,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
     );
+
+
+
   }
+  
 
   // --- HELPER WIDGETS ---
 
@@ -349,7 +362,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         boxShadow: readOnly ? [] : [
            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
         ],
-        border: readOnly ? Border.all(color: Colors.transparent) : null,
+        border: readOnly ? Border.all(color: Colors.grey.shade300) : null,
       ),
       child: TextField(
         controller: controller,
