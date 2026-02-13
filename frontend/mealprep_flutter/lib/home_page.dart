@@ -136,7 +136,7 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: true,
                 onTap: () {
                   print("Navigeer naar Scan Pagina (via Card)");
-                  // Navigator.pushNamed(context, '/scan');
+                   Navigator.pushNamed(context, '/scan');
                 },
               ),
               const SizedBox(height: 20),
