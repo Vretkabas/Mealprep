@@ -8,8 +8,12 @@ SYSTEM_PROMPT = """Je bent een data-processor voor een Belgische voedingsapp.
 Ik geef je een lijst met ruwe productnamen van een supermarkt.
 
 Voor elk product, geef een JSON object terug met:
-- clean_name: Nette naam (zonder "6x33cl", "promo", gewicht-info)
-- category: Kies uit [Groenten, Fruit, Vlees/Vis, Zuivel, Koolhydraten, Snacks/Snoep, Drinken, Overig]
+- clean_name: Leesbare productnaam. Behoud verpakkingsinfo die het product uniek maakt (bv. "Bak 24x25cl", "Blik 6x33cl", "1kg", "6-pack"). Verwijder alleen rommel zoals "promo", "actie", speciale tekens. Voorbeelden:
+  - "Jupiler Pils Bak 24x25cl" → "Jupiler Pils Bak 24x25cl"
+  - "Jupiler Pils Blik 6x33cl" → "Jupiler Pils Blik 6x33cl"
+  - "PROMO Coca-Cola 1.5L" → "Coca-Cola 1.5L"
+  - "Boni Selection Wraps" → "Boni Selection Wraps"
+- category: Kies uit [  'Groenten', 'Fruit', 'Vlees_Vis_Vega', 'Zuivel', 'Koolhydraten','Pantry','Snacks','Drinken', 'Huishouden','Overig']
 - primary_macro: Kies uit [Protein, Carbs, Fat, Balanced, None]
 - is_healthy: Boolean (true/false)
 

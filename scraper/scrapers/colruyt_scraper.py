@@ -109,8 +109,8 @@ def run(playwright: Playwright):
     time.sleep(random.uniform(2.0, 3.0))
 
     # TEST MODE: Set to True to only scrape 1 page for faster testing
-    TEST_MODE = True
-    MAX_TEST_PAGES = 1
+    TEST_MODE = False
+    MAX_TEST_PAGES = 99
 
     index = 1
     while True:
@@ -283,25 +283,40 @@ def run(playwright: Playwright):
             if h1:
                 product_name = h1.get_text(strip=True)
 
-            # Get discount - check multiple possible locations
+            # Get discount - grab the full promo text from promos__row--benefits
             discount = None
 
-            # Method 1: Look in div.promos__row--benefits > strong
             promo_div = soup.find("div", class_="promos__row--benefits")
             if promo_div:
+                # Get the main discount from <strong> (e.g. "-20%", "2+1 GRATIS")
                 strong = promo_div.find("strong")
                 if strong:
                     discount = strong.get_text(strip=True)
 
-            # Method 2: Look in span.promos_description > strong (alternative structure)
-            if not discount:
-                promo_span = soup.find("span", class_="promos_description")
-                if promo_span:
-                    strong = promo_span.find("strong")
-                    if strong:
-                        discount = strong.get_text(strip=True)
+                # Check for extra context in promos__description-note (e.g. "vanaf 16 st")
+                note_span = promo_div.find("span", class_="promos__description-note")
+                if note_span and discount:
+                    note_text = note_span.get_text(strip=True)
+                    if note_text:
+                        discount = f"{discount} {note_text}"
 
-            # Method 3: Look for any strong with percentage or GRATIS pattern
+            # Fallback: try span.promos__description or promos__description-text
+            if not discount:
+                for class_name in ["promos__description", "promos__description-text"]:
+                    promo_span = soup.find("span", class_=class_name)
+                    if promo_span:
+                        strong = promo_span.find("strong")
+                        if strong:
+                            discount = strong.get_text(strip=True)
+                            # Also grab note if present
+                            note_span = promo_span.find("span", class_="promos__description-note")
+                            if note_span:
+                                note_text = note_span.get_text(strip=True)
+                                if note_text:
+                                    discount = f"{discount} {note_text}"
+                            break
+
+            # Last resort: any <strong> with % or GRATIS
             if not discount:
                 for strong in soup.find_all("strong"):
                     text = strong.get_text(strip=True)
