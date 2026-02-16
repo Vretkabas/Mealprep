@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
 
-class CreateShoppingListPage extends StatefulWidget {
+class Create_shopping_list_page extends StatefulWidget {
   final String userId;
 
-  const CreateShoppingListPage({
-    Key? key,
+  const Create_shopping_list_page({
+    super.key,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
-  State<CreateShoppingListPage> createState() =>
-      _CreateShoppingListPageState();
+  State<Create_shopping_list_page> createState() =>
+      _Create_shopping_list_pageState();
 }
 
-class _CreateShoppingListPageState extends State<CreateShoppingListPage> {
+class _Create_shopping_list_pageState extends State<Create_shopping_list_page> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
 

@@ -1,5 +1,4 @@
 from supabase import Client
-from typing import Optional
 
 def create_list(supabase: Client, user_id: str, list_name: str):
     result = supabase.table("shopping_lists").insert({
@@ -10,8 +9,19 @@ def create_list(supabase: Client, user_id: str, list_name: str):
 
     return result.data[0]
 
+def get_product_id_by_barcode(supabase: Client, barcode: str) -> str | None:
+    """Zoek een product_id op basis van de barcode"""
+    result = supabase.table("products").select("product_id").eq("barcode", barcode).limit(1).execute()
+    if result.data and len(result.data) > 0:
+        return result.data[0]["product_id"]
+    return None
 
-def add_item_to_list(supabase: Client, list_id: str, product_id: str, quantity: int = 1):
+def add_item_by_barcode(supabase: Client, list_id: str, barcode: str, quantity: int = 1):
+    # Haal product_id op via barcode
+    product_id = get_product_id_by_barcode(supabase, barcode)
+    if not product_id:
+        return {"error": f"Product met barcode {barcode} niet gevonden"}
+
     # Check of item al bestaat
     existing = supabase.table("shopping_list_items") \
         .select("item_id, quantity") \
@@ -39,3 +49,34 @@ def add_item_to_list(supabase: Client, list_id: str, product_id: str, quantity: 
         }).execute()
 
         return {"created": True}
+
+def get_list_items_with_names(supabase: Client, list_id: str):
+    """
+    Haal alle items van een lijst op, inclusief productnamen.
+    """
+    result = supabase.table("shopping_list_items") \
+        .select("""
+            item_id,
+            product_id,
+            quantity,
+            is_checked,
+            products!inner(product_name)
+        """) \
+        .eq("list_id", list_id) \
+        .execute()
+
+    if not result.data:
+        return []
+
+    # Supabase nested select geeft dicts zoals {'products': {'product_name': ...}}
+    items_with_names = []
+    for row in result.data:
+        items_with_names.append({
+            "item_id": row["item_id"],
+            "product_id": row["product_id"],
+            "product_name": row["products"]["product_name"],
+            "quantity": row["quantity"],
+            "is_checked": row["is_checked"]
+        })
+
+    return items_with_names

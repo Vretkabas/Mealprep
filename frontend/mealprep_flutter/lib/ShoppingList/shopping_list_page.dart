@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:mealprep_flutter/ShoppingList/CreateShoppingListpage.dart';
+import 'package:mealprep_flutter/ShoppingList/create_shopping_list_page.dart';
+import 'shopping_list_detail_page.dart';
+
 
 class ShoppingListsPage extends StatefulWidget {
-  const ShoppingListsPage({Key? key}) : super(key: key);
+  const ShoppingListsPage({super.key});
 
   @override
   State<ShoppingListsPage> createState() => _ShoppingListsPageState();
@@ -12,7 +14,7 @@ class ShoppingListsPage extends StatefulWidget {
 class _ShoppingListsPageState extends State<ShoppingListsPage> {
   final supabase = Supabase.instance.client;
 
-  List<dynamic> _lists = [];
+  List<dynamic> shoppingLists = [];
   bool _isLoading = true;
 
   @override
@@ -32,7 +34,7 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
         .order('created_at', ascending: false);
 
     setState(() {
-      _lists = response;
+      shoppingLists = response;
       _isLoading = false;
     });
   }
@@ -44,7 +46,7 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CreateShoppingListPage(userId: user.id),
+        builder: (_) => Create_shopping_list_page(userId: user.id),
       ),
     );
 
@@ -78,24 +80,26 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
                   // Lijst weergave
                   Expanded(
                     child: ListView.builder(
-                      itemCount: _lists.length,
+                      itemCount: shoppingLists.length,
                       itemBuilder: (context, index) {
-                        final list = _lists[index];
+                        final list = shoppingLists[index];
 
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            title: Text(list['list_name'] ?? ''),
-                            subtitle: Text(
-                              "Status: ${list['status']}",
-                            ),
-                            onTap: () {
-                              // later: open details page
-                            },
-                          ),
+                        return ListTile(
+                          title: Text(list['list_name'] ?? ''),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ShoppingListDetailPage(
+                                  listId: list['list_id'],
+                                  listName: list['list_name'],
+                                ),
+                              ),
+                            );
+                          },
                         );
-                      },
-                    ),
+                      }
+                    )
                   ),
                 ],
               ),
