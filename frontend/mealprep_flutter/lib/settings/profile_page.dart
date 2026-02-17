@@ -31,7 +31,6 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = supabase.auth.currentUser;
       if (user != null) {
-        // Haal extra profielgegevens op (zoals naam) uit de 'profiles' tabel
         final profileData = await supabase
             .from('profiles')
             .select('full_name')
@@ -40,7 +39,6 @@ class _ProfilePageState extends State<ProfilePage> {
             
         setState(() {
           _email = user.email ?? 'Geen email';
-          // Eerst metadata checken, dan profile table, dan fallback op email
           _avatarUrl = user.userMetadata?['avatar_url'];
           _displayName = profileData?['full_name'] ?? 
                          user.userMetadata?['full_name'] ?? 
@@ -64,7 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
-    if (image == null) return; // Gebruiker heeft geannuleerd
+    if (image == null) return; 
 
     setState(() => _isLoading = true);
 
@@ -73,20 +71,17 @@ class _ProfilePageState extends State<ProfilePage> {
       if (user == null) return;
 
       final imageBytes = await image.readAsBytes();
-      final String path = '/${user.id}/profile.jpg'; // Uniek pad per user
+      final String path = '/${user.id}/profile.jpg'; 
 
-      // Upload naar de 'avatars' bucket
       await supabase.storage.from('avatars').uploadBinary(
             path,
             imageBytes,
-            fileOptions: const FileOptions(upsert: true), // Overschrijf oude foto
+            fileOptions: const FileOptions(upsert: true), 
           );
 
-      // Haal de publieke URL op
       final String publicUrl =
           supabase.storage.from('avatars').getPublicUrl(path);
 
-      // Update de user metadata met de nieuwe URL
       await supabase.auth.updateUser(
         UserAttributes(data: {'avatar_url': publicUrl}),
       );
@@ -118,7 +113,6 @@ class _ProfilePageState extends State<ProfilePage> {
       await supabase.auth.signOut();
       
       if (mounted) {
-        // Navigeer terug naar login en verwijder alle eerdere routes
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
     } catch (e) {
@@ -132,10 +126,21 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // Helper om navigatie naar EditProfilePage te hergebruiken
+  void _navigateToSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EditProfilePage()),
+    ).then((_) {
+      // Ververs data als we terugkomen (bijv. als de naam is aangepast)
+      _getProfile(); 
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Lichte achtergrond
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -156,7 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   // --- AVATAR SECTIE ---
                   GestureDetector(
-                    onTap: _uploadProfilePicture, // Klikken = uploaden
+                    onTap: _uploadProfilePicture,
                     child: Stack(
                       children: [
                         Container(
@@ -172,7 +177,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ? Image.network(
                                     _avatarUrl!,
                                     fit: BoxFit.cover,
-                                    // Hack om te zorgen dat afbeelding ververst
                                     key: ValueKey(_avatarUrl), 
                                     errorBuilder: (context, error, stackTrace) =>
                                         const Icon(Icons.person, size: 60, color: Colors.grey),
@@ -180,7 +184,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : const Icon(Icons.person, size: 80, color: Colors.grey),
                           ),
                         ),
-                        // Edit icoontje
                         Positioned(
                           bottom: 0,
                           right: 0,
@@ -199,7 +202,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   const SizedBox(height: 15),
                   
-                  // --- NAAM / EMAIL ---
                   Text(
                     _displayName, 
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -212,23 +214,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 30),
 
                   // --- MENU ITEMS ---
-                  // Account
                   _buildSectionTitle("Account"),
                   
-                  // Aangepaste Email Navigatie
                   _buildListTile(
                     Icons.email, 
                     "Email", 
                     hasArrow: true,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                      ).then((_) {
-                        // Ververs data als we terugkomen
-                        _getProfile(); 
-                      });
-                    },
+                    onTap: _navigateToSettings,
                   ),
                   
                   _buildListTile(Icons.lock, "Password", hasArrow: true),
@@ -236,15 +228,29 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   const SizedBox(height: 20),
 
-                  // Preferences
+                  // Preferences - NU GEKOPPELD AAN SETTINGS
                   _buildSectionTitle("Preferences"),
-                  _buildListTile(Icons.restaurant, "Diet & Allergens", hasArrow: true),
-                  _buildListTile(Icons.favorite, "Health Goals", hasArrow: true),
-                  _buildListTile(Icons.attach_money, "Budget", hasArrow: true),
+                  _buildListTile(
+                    Icons.restaurant, 
+                    "Diet & Allergens", 
+                    hasArrow: true,
+                    onTap: _navigateToSettings,
+                  ),
+                  _buildListTile(
+                    Icons.favorite, 
+                    "Health Goals", 
+                    hasArrow: true,
+                    onTap: _navigateToSettings,
+                  ),
+                  _buildListTile(
+                    Icons.attach_money, 
+                    "Budget", 
+                    hasArrow: true,
+                    onTap: _navigateToSettings,
+                  ),
 
                   const SizedBox(height: 20),
 
-                  // App Settings
                   _buildSectionTitle("App Settings"),
                   _buildListTile(Icons.notifications, "Notifications", hasArrow: true),
                   _buildListTile(Icons.language, "Language", hasArrow: true),
@@ -252,7 +258,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   const SizedBox(height: 20),
 
-                  // Analytics
                   _buildSectionTitle("Analytics"),
                   _buildListTile(Icons.bar_chart, "View Stats", hasArrow: true),
 
@@ -281,7 +286,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Helper Widget voor sectie titels
   Widget _buildSectionTitle(String title) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -295,7 +299,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Helper Widget voor de lijst items
   Widget _buildListTile(IconData icon, String title, {bool hasArrow = false, VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -310,7 +313,7 @@ class _ProfilePageState extends State<ProfilePage> {
         leading: Icon(icon, color: Colors.blueAccent),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
         trailing: hasArrow ? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey) : null,
-        onTap: onTap, // Hier wordt de actie uitgevoerd
+        onTap: onTap,
       ),
     );
   }
