@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({super.key});
+  final int initialIndex;
+  const EditProfilePage({super.key, this.initialIndex = 0});
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -12,7 +13,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final supabase = Supabase.instance.client;
   bool _isLoading = false;
 
-  // Controllers voor de tekstvelden
+  // Huidige actieve tab (0 = Profile, 1 = Nutrition, 2 = Other)
+  late int _selectedTabIndex;
+
+  // --- CONTROLLERS PROFILE ---
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _ageController = TextEditingController();
@@ -22,10 +26,41 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _goalController = TextEditingController();
   final _activityController = TextEditingController();
 
+  // --- NUTRITION STATE ---
+  int _dailyCalories = 2000;
+  double _carbPct = 50;
+  double _proteinPct = 30;
+  double _fatPct = 20;
+  double get _totalMacro => _carbPct + _proteinPct + _fatPct;
+
+  final List<String> _selectedRestrictions = [];
+  final List<Map<String, dynamic>> _restrictionOptions = [
+    {'label': 'Nuts', 'icon': '🥜', 'type': 'allergen'},
+    {'label': 'Gluten', 'icon': '🌾', 'type': 'allergen'},
+    {'label': 'Lactose', 'icon': '🥛', 'type': 'allergen'},
+    {'label': 'Fish', 'icon': '🐟', 'type': 'allergen'},
+    {'label': 'Vegetarian', 'icon': '🌱', 'type': 'diet'},
+    {'label': 'Vegan', 'icon': '🌿', 'type': 'diet'},
+  ];
+
+  // --- VARIABLES OTHER (Notifications) ---
+  bool _mealReminders = true;
+  bool _weeklyProgress = true;
+  bool _shoppingList = false;
+
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _selectedTabIndex = widget.initialIndex;
+    _loadAllData();
+
+    // Listeners om calorieën bij te werken als profieldata verandert
+    _ageController.addListener(_calculateDailyCalories);
+    _heightController.addListener(_calculateDailyCalories);
+    _weightController.addListener(_calculateDailyCalories);
+    _genderController.addListener(_calculateDailyCalories);
+    _activityController.addListener(_calculateDailyCalories);
+    _goalController.addListener(_calculateDailyCalories);
   }
 
   @override
@@ -41,71 +76,102 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
-  // 1. Data ophalen uit Supabase
-  Future<void> _loadProfile() async {
-    setState(() => _isLoading = true);
+  // --- LOGICA: CALORIE BEREKENING ---
+  void _calculateDailyCalories() {
+    final double? weight = double.tryParse(_weightController.text);
+    final double? height = double.tryParse(_heightController.text);
+    final int? age = int.tryParse(_ageController.text);
+    if (weight == null || height == null || age == null) return;
 
+    double bmr;
+    String gender = _genderController.text.toLowerCase();
+    if (gender.contains('male') || gender == 'man') {
+      bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+    } else {
+      bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+    }
+
+    double multiplier = 1.2;
+    String activity = _activityController.text.toLowerCase();
+    if (activity.contains('light')) multiplier = 1.375;
+    if (activity.contains('moderat')) multiplier = 1.55;
+    if (activity.contains('active')) multiplier = 1.725;
+
+    double tdee = bmr * multiplier;
+    int finalCals = tdee.round();
+
+    String goal = _goalController.text.toLowerCase();
+    if (goal.contains('lose')) finalCals -= 500;
+    if (goal.contains('gain')) finalCals += 500;
+
+    setState(() => _dailyCalories = finalCals);
+  }
+
+  // --- 1. DATA LADEN (SUPABASE) ---
+  Future<void> _loadAllData() async {
+    setState(() => _isLoading = true);
     try {
       final user = supabase.auth.currentUser;
-      if (user != null) {
+      if (user == null) return;
+
+      // Laad Profiel Data
+      final profileData = await supabase.from('profiles').select().eq('id', user.id).maybeSingle();
+      if (profileData != null) {
+        _nameController.text = profileData['full_name'] ?? '';
         _emailController.text = user.email ?? '';
-
-        // Haal data uit de 'profiles' tabel
-        final data = await supabase
-            .from('profiles')
-            .select()
-            .eq('id', user.id)
-            .maybeSingle();
-
-        if (data != null) {
-          _nameController.text = data['full_name'] ?? '';
-          _ageController.text = data['age']?.toString() ?? '';
-          _genderController.text = data['gender'] ?? '';
-          _heightController.text = data['height']?.toString() ?? '';
-          _weightController.text = data['weight']?.toString() ?? '';
-          _goalController.text = data['goal'] ?? '';
-          _activityController.text = data['activity_level'] ?? '';
-        } else {
-          // Fallback als er nog geen record in 'profiles' is, gebruik de metadata
-          _nameController.text = user.userMetadata?['full_name'] ?? '';
-        }
+        _ageController.text = profileData['age']?.toString() ?? '';
+        _genderController.text = profileData['gender'] ?? '';
+        _heightController.text = profileData['height']?.toString() ?? '';
+        _weightController.text = profileData['weight']?.toString() ?? '';
+        _goalController.text = profileData['goal'] ?? '';
+        _activityController.text = profileData['activity_level'] ?? '';
+        _mealReminders = profileData['meal_reminders'] ?? true;
+        _weeklyProgress = profileData['weekly_progress'] ?? true;
+        _shoppingList = profileData['shopping_list'] ?? false;
       }
+
+      // Laad Nutrition Data (user_settings)
+      final settingsData = await supabase.from('user_settings').select().eq('user_id', user.id).maybeSingle();
+      if (settingsData != null) {
+        setState(() {
+          _dailyCalories = settingsData['daily_calorie_target'] ?? 2000;
+          _carbPct = (settingsData['carb_percentage'] ?? 50).toDouble();
+          _proteinPct = (settingsData['protein_percentage'] ?? 30).toDouble();
+          _fatPct = (settingsData['fat_percentage'] ?? 20).toDouble();
+
+          _selectedRestrictions.clear();
+          if (settingsData['allergens'] != null) {
+            _selectedRestrictions.addAll(List<String>.from(settingsData['allergens']));
+          }
+          if (settingsData['dietary_type'] != null) {
+            _selectedRestrictions.add(settingsData['dietary_type']);
+          }
+        });
+      }
+      _calculateDailyCalories();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij laden: $e')),
-        );
-      }
+      debugPrint('Fout bij laden: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 2. Data opslaan in Supabase (Inclusief Metadata Update voor de Home)
-  Future<void> _saveProfile() async {
-    setState(() => _isLoading = true);
+  // --- 2. DATA OPSLAAN ---
+  Future<void> _saveChanges() async {
+    if (_selectedTabIndex == 1 && _totalMacro.toInt() != 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Macro distribution must total exactly 100%.'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
 
+    setState(() => _isLoading = true);
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // --- A. Email Wijzigen in Auth (Indien aangepast) ---
-      if (_emailController.text.trim() != user.email) {
-        await supabase.auth.updateUser(
-          UserAttributes(email: _emailController.text.trim()),
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bevestig je nieuwe e-mail via de link in je inbox!'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-
-      // --- B. Profielgegevens naar Database ('profiles' tabel) ---
-      final updates = {
+      // A. Update Profiel tabel
+      await supabase.from('profiles').upsert({
         'id': user.id,
         'full_name': _nameController.text,
         'age': int.tryParse(_ageController.text),
@@ -114,48 +180,90 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'weight': double.tryParse(_weightController.text),
         'goal': _goalController.text,
         'activity_level': _activityController.text,
+        'meal_reminders': _mealReminders,
+        'weekly_progress': _weeklyProgress,
+        'shopping_list': _shoppingList,
         'updated_at': DateTime.now().toIso8601String(),
-      };
+      });
 
-      await supabase.from('profiles').upsert(updates);
-
-      // --- C. Update Auth Metadata ---
-      // Dit zorgt ervoor dat de HomePage (die naar metadata kijkt) direct de nieuwe naam ziet
-      await supabase.auth.updateUser(
-        UserAttributes(
-          data: {'full_name': _nameController.text},
-        ),
-      );
-
-      if (mounted) {
-        _showSuccessDialog();
+      // B. Update User Settings (Nutrition)
+      List<String> allergens = [];
+      String? dietaryType;
+      for (var item in _selectedRestrictions) {
+        final opt = _restrictionOptions.firstWhere((o) => o['label'] == item, orElse: () => {});
+        if (opt['type'] == 'allergen') allergens.add(item);
+        if (opt['type'] == 'diet') dietaryType = item;
       }
+
+      await supabase.from('user_settings').upsert({
+        'user_id': user.id,
+        'daily_calorie_target': _dailyCalories,
+        'carb_percentage': _carbPct.toInt(),
+        'protein_percentage': _proteinPct.toInt(),
+        'fat_percentage': _fatPct.toInt(),
+        'allergens': allergens,
+        'dietary_type': dietaryType,
+      }, onConflict: 'user_id');
+
+      if (mounted) _showSuccessDialog("Saved", "All your changes have been successfully saved.");
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Opslaan mislukt: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // 3. Popup tonen bij succes
-  void _showSuccessDialog() {
+  // --- ACCOUNT ACTIES ---
+  Future<void> _changePassword() async {
+    try {
+      final email = supabase.auth.currentUser?.email;
+      if (email != null) {
+        await supabase.auth.resetPasswordForEmail(email);
+        if (mounted) _showSuccessDialog("Email Sent", "Check your inbox for the password reset link.");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  Future<void> _logOut() async {
+    await supabase.auth.signOut();
+    if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
+  Future<void> _deleteAccount() async {
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Account"),
+        content: const Text("Are you sure? This action cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+    try {
+      await supabase.rpc('delete_user_account'); 
+      await supabase.auth.signOut();
+      if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+    }
+  }
+
+  void _showSuccessDialog(String title, String message) {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Success"),
-        content: const Text("Your changes have been saved successfully!"),
+        title: Text(title),
+        content: Text(message),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Sluit popup
-              Navigator.of(context).pop(); // Ga terug naar Profile Page
-            },
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text("OK", style: TextStyle(color: Color(0xFF1B8C61), fontWeight: FontWeight.bold)),
           ),
         ],
@@ -179,202 +287,229 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B8C61)))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- TABS (Visual only for now) ---
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+          : Column(
+              children: [
+                // --- TABS ---
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Container(
+                    decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
                     child: Row(
                       children: [
-                        _buildTab("Profile", true),
-                        _buildTab("Nutrition", false),
-                        _buildTab("Other", false),
+                        _buildTab("Profile", 0),
+                        _buildTab("Nutrition", 1),
+                        _buildTab("Other", 2),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 25),
-
-                  // --- AVATAR ---
-                  Center(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.blueAccent, width: 2),
-                          ),
-                          child: const Icon(Icons.person, size: 50, color: Colors.blueAccent),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _nameController.text.isNotEmpty ? _nameController.text : "User",
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
-                      ],
-                    ),
+                ),
+                
+                // --- CONTENT ---
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: _buildTabContent(),
                   ),
-                  const SizedBox(height: 25),
+                ),
 
-                  // --- FORM FIELDS ---
-                  const Text("Basic Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 15),
-
-                  _buildLabel("Name"),
-                  _buildTextField(_nameController, "John"),
-                  
-                  _buildLabel("Email"),
-                  _buildTextField(_emailController, "email@example.com", readOnly: false),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel("Age"),
-                            _buildTextField(_ageController, "20", isNumber: true),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel("Gender"),
-                            _buildTextField(_genderController, "Male"),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-                  const Text("Body Measurements", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 15),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel("Height (cm)"),
-                            _buildTextField(_heightController, "180", isNumber: true),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel("Weight (kg)"),
-                            _buildTextField(_weightController, "75", isNumber: true),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  _buildLabel("Goal"),
-                  _buildTextField(_goalController, "Lose Weight"),
-
-                  _buildLabel("Activity Level"),
-                  _buildTextField(_activityController, "Moderate Active"),
-
-                  const SizedBox(height: 30),
-
-                  // --- SAVE BUTTON ---
-                  SizedBox(
+                // --- SAVE BUTTON ---
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: _saveProfile,
+                      onPressed: _saveChanges,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1B8C61),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        "Save Changes",
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                      child: const Text("Save Changes", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                ],
-              ),
+                ),
+              ],
             ),
     );
-
-
-
   }
-  
 
-  // --- HELPER WIDGETS ---
+  Widget _buildTabContent() {
+    switch (_selectedTabIndex) {
+      case 0: return _buildProfileTab();
+      case 1: return _buildNutritionTab();
+      case 2: return _buildOtherTab();
+      default: return Container();
+    }
+  }
 
-  Widget _buildTab(String title, bool isActive) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: isActive
-            ? BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
-              )
-            : null,
-        child: Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isActive ? const Color(0xFF1B8C61) : Colors.grey,
+  // --- TAB 1: PROFILE ---
+  Widget _buildProfileTab() {
+    return Column(
+      children: [
+        Center(
+          child: Column(
+            children: [
+              Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFF1B8C61), width: 2)),
+                child: const Icon(Icons.person, size: 50, color: Color(0xFF1B8C61)),
+              ),
+              const SizedBox(height: 10),
+              Text(_nameController.text.isNotEmpty ? _nameController.text : "User", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
           ),
+        ),
+        const SizedBox(height: 25),
+        const Align(alignment: Alignment.centerLeft, child: Text("Basic Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        const SizedBox(height: 15),
+        _buildLabel("Name"),
+        _buildTextField(_nameController, "Name"),
+        _buildLabel("Email"),
+        _buildTextField(_emailController, "Email", readOnly: true),
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Age"), _buildTextField(_ageController, "20", isNumber: true)])),
+          const SizedBox(width: 15),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Gender"), _buildTextField(_genderController, "Male")])),
+        ]),
+        const SizedBox(height: 20),
+        const Align(alignment: Alignment.centerLeft, child: Text("Body Measurements", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        const SizedBox(height: 15),
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Height (cm)"), _buildTextField(_heightController, "180", isNumber: true)])),
+          const SizedBox(width: 15),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Weight (kg)"), _buildTextField(_weightController, "75", isNumber: true)])),
+        ]),
+        _buildLabel("Goal"),
+        _buildTextField(_goalController, "Goal"),
+        _buildLabel("Activity Level"),
+        _buildTextField(_activityController, "Activity Level"),
+      ],
+    );
+  }
+
+  // --- TAB 2: NUTRITION ---
+  Widget _buildNutritionTab() {
+    bool isInvalid = _totalMacro.toInt() != 100;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Dynamic Calorie Goal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Automatically calculated from your profile", style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 15),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(color: const Color(0xFFE0F2F1), borderRadius: BorderRadius.circular(15)),
+          child: Column(children: [
+            Text("$_dailyCalories", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            const Text("kcal per day", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ]),
+        ),
+        const SizedBox(height: 30),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text("Macro Distribution", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text("${_totalMacro.toInt()}%", style: TextStyle(color: isInvalid ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
+        ]),
+        _buildMacroSlider("Carbs", Colors.blue, _carbPct, (val) => setState(() => _carbPct = val)),
+        _buildMacroSlider("Protein", Colors.orange, _proteinPct, (val) => setState(() => _proteinPct = val)),
+        _buildMacroSlider("Fats", Colors.red, _fatPct, (val) => setState(() => _fatPct = val)),
+        const SizedBox(height: 30),
+        const Text("Dietary Restrictions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 15),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 2.5, crossAxisSpacing: 10, mainAxisSpacing: 10),
+          itemCount: _restrictionOptions.length,
+          itemBuilder: (context, index) {
+            final option = _restrictionOptions[index];
+            final isSelected = _selectedRestrictions.contains(option['label']);
+            return GestureDetector(
+              onTap: () => setState(() => isSelected ? _selectedRestrictions.remove(option['label']) : _selectedRestrictions.add(option['label'])),
+              child: Container(
+                decoration: BoxDecoration(color: isSelected ? const Color(0xFFA5D6A7) : Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? const Color(0xFF1B8C61) : Colors.grey.shade300, width: isSelected ? 2 : 1)),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Text(option['icon'], style: const TextStyle(fontSize: 18)), const SizedBox(width: 8), Text(option['label'], style: const TextStyle(fontWeight: FontWeight.bold))]),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // --- TAB 3: OTHER ---
+  Widget _buildOtherTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Notifications", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 15),
+        _buildSwitchTile("Meal Reminders", "Get notified when it's time to eat", _mealReminders, (val) => setState(() => _mealReminders = val)),
+        _buildSwitchTile("Weekly Progress", "Weekly summary of your nutrition", _weeklyProgress, (val) => setState(() => _weeklyProgress = val)),
+        _buildSwitchTile("Shopping List", "Reminder to check your shopping list", _shoppingList, (val) => setState(() => _shoppingList = val)),
+        const SizedBox(height: 30),
+        const Text("Account", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 15),
+        _buildAccountTile(Icons.lock_outline, "Change Password", _changePassword),
+        _buildAccountTile(Icons.logout, "Log Out", _logOut, isDestructive: true),
+        _buildAccountTile(Icons.delete_outline, "Delete Account", _deleteAccount, isDestructive: true),
+      ],
+    );
+  }
+
+  // --- HELPERS ---
+  Widget _buildTab(String title, int index) {
+    bool isActive = _selectedTabIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTabIndex = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: isActive ? BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)]) : null,
+          child: Text(title, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? const Color(0xFF1B8C61) : Colors.grey)),
         ),
       ),
     );
   }
 
-  Widget _buildLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
-      child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600)),
+  Widget _buildMacroSlider(String label, Color color, double value, Function(double) onChanged) {
+    return Column(children: [
+      Row(children: [Text(label, style: const TextStyle(fontWeight: FontWeight.bold)), const Spacer(), Text("${value.toInt()}%", style: TextStyle(color: color, fontWeight: FontWeight.bold))]),
+      Slider(value: value, min: 0, max: 100, divisions: 100, activeColor: color, onChanged: onChanged),
+    ]);
+  }
+
+  Widget _buildSwitchTile(String title, String subtitle, bool value, Function(bool) onChanged) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)]),
+      child: SwitchListTile(title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)), value: value, activeColor: const Color(0xFF1B8C61), onChanged: onChanged),
     );
+  }
+
+  Widget _buildAccountTile(IconData icon, String title, VoidCallback onTap, {bool isDestructive = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey.shade200)),
+      child: ListTile(leading: Icon(icon, color: isDestructive ? Colors.red : Colors.black), title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isDestructive ? Colors.red : Colors.black)), trailing: const Icon(Icons.arrow_forward_ios, size: 14), onTap: onTap),
+    );
+  }
+
+  Widget _buildLabel(String label) {
+    return Padding(padding: const EdgeInsets.only(bottom: 8, left: 4), child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600)));
   }
 
   Widget _buildTextField(TextEditingController controller, String hint, {bool readOnly = false, bool isNumber = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
-      decoration: BoxDecoration(
-        color: readOnly ? Colors.grey[100] : Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: readOnly ? [] : [
-           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
-        ],
-        border: readOnly ? Border.all(color: Colors.grey.shade300) : null,
-      ),
+      decoration: BoxDecoration(color: readOnly ? Colors.grey[100] : Colors.white, borderRadius: BorderRadius.circular(15), border: readOnly ? Border.all(color: Colors.grey.shade300) : null, boxShadow: readOnly ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)]),
       child: TextField(
         controller: controller,
         readOnly: readOnly,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         style: const TextStyle(fontWeight: FontWeight.bold),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          border: InputBorder.none,
-        ),
+        decoration: InputDecoration(hintText: hint, contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), border: InputBorder.none),
       ),
     );
   }
