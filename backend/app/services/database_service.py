@@ -217,6 +217,22 @@ class DatabaseService:
                 )
             return [dict(row) for row in rows]
 
+    async def get_active_promotions_by_store_name(self, store_name: str) -> List[Dict[str, Any]]:
+        """Get active promotions filtered by store name (case-insensitive)."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT p.*, s.store_name
+                FROM promotions p
+                JOIN stores s ON p.store_id = s.store_id
+                WHERE p.is_active = true
+                  AND LOWER(s.store_name) = LOWER($1)
+                ORDER BY p.valid_until
+                """,
+                store_name
+            )
+            return [dict(row) for row in rows]
+
 
 # Global pool instance
 _pool: Optional[asyncpg.Pool] = None
