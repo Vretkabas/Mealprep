@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mealprep_flutter/services/shopping_list_service.dart';
 import 'package:mealprep_flutter/ShoppingList/create_shopping_list_page.dart';
 import 'shopping_list_detail_page.dart';
-
 
 class ShoppingListsPage extends StatefulWidget {
   const ShoppingListsPage({super.key});
@@ -12,9 +11,7 @@ class ShoppingListsPage extends StatefulWidget {
 }
 
 class _ShoppingListsPageState extends State<ShoppingListsPage> {
-  final supabase = Supabase.instance.client;
-
-  List<dynamic> shoppingLists = [];
+  List<Map<String, dynamic>> shoppingLists = [];
   bool _isLoading = true;
 
   @override
@@ -24,29 +21,29 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
   }
 
   Future<void> _fetchLists() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
+    setState(() => _isLoading = true);
 
-    final response = await supabase
-        .from('shopping_lists')
-        .select()
-        .eq('user_id', user.id)
-        .order('created_at', ascending: false);
+    try {
+      final lists = await ShoppingListService.getUserLists();
 
-    setState(() {
-      shoppingLists = response;
-      _isLoading = false;
-    });
+      setState(() {
+        shoppingLists = lists;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Fout bij ophalen lijsten: $e")),
+      );
+    }
   }
 
   Future<void> _openCreatePage() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Create_shopping_list_page(userId: user.id),
+        builder: (_) => const Create_shopping_list_page(),
       ),
     );
 
@@ -79,25 +76,30 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
 
                   // Lijst weergave
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: shoppingLists.length,
-                      itemBuilder: (context, index) {
-                        final list = shoppingLists[index];
+                    child: shoppingLists.isEmpty
+                        ? const Center(
+                            child: Text("Nog geen lijsten aangemaakt"),
+                          )
+                        : ListView.builder(
+                            itemCount: shoppingLists.length,
+                            itemBuilder: (context, index) {
+                              final list = shoppingLists[index];
 
-                        return ListTile(
-                          title: Text(list['list_name'] ?? ''),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ShoppingListDetailPage(
-                                  listId: list['list_id'],
-                                  listName: list['list_name'],
-                                ),
-                              ),
-                            );
-                          },
-                        );
+                              return ListTile(
+                                title: Text(list['list_name'] ?? ''),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          ShoppingListDetailPage(
+                                        listId: list['list_id'],
+                                        listName: list['list_name'],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
                       }
                     )
                   ),

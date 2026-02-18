@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
 
 class Create_shopping_list_page extends StatefulWidget {
-  final String userId;
-
-  const Create_shopping_list_page({
-    super.key,
-    required this.userId,
-  });
+  const Create_shopping_list_page({super.key});
 
   @override
   State<Create_shopping_list_page> createState() =>
@@ -27,7 +22,6 @@ class _Create_shopping_list_pageState extends State<Create_shopping_list_page> {
 
     try {
       await ShoppingListService.createList(
-        userId: widget.userId,
         listName: _nameController.text.trim(),
       );
 

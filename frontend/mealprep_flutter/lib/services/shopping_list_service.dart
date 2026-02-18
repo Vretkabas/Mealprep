@@ -1,12 +1,44 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShoppingListService {
   static const String baseUrl = 'http://10.0.2.2:8081';
 
+
+static Future<Map<String, String>> _authHeaders() async {
+  final supabase = Supabase.instance.client;
+  
+  // Forceer token refresh als sessie bijna verlopen is
+  Session? session = supabase.auth.currentSession;
+  
+  if (session == null) {
+    throw Exception("Niet ingelogd - ga terug naar login");
+  }
+
+  // Ververs token als het verlopen is of bijna verloopt
+  if (session.isExpired) {
+    print("TOKEN VERLOPEN - probeer te verversen...");
+    try {
+      final refreshed = await supabase.auth.refreshSession();
+      session = refreshed.session;
+    } catch (e) {
+      print("REFRESH MISLUKT: $e");
+      throw Exception("Sessie verlopen, log opnieuw in");
+    }
+  }
+
+  print("TOKEN GELDIG TOT: ${session!.expiresAt}");
+
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ${session.accessToken}',
+  };
+}
+
   static Future<List<Map<String, dynamic>>> getListItems(String listId) async {
     final uri = Uri.parse('$baseUrl/shopping-lists/$listId/items');
-    final response = await http.get(uri);
+    final response = await http.get(uri, headers: await _authHeaders());
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as List;
@@ -16,17 +48,15 @@ class ShoppingListService {
     }
   }
 
-  static Future<void> createList({
-  required String userId,
+
+
+static Future<void> createList({
   required String listName,
 }) async {
-  final uri = Uri.parse('$baseUrl/shopping-lists');
-
   final response = await http.post(
-    uri,
-    headers: {'Content-Type': 'application/json'},
+    Uri.parse('$baseUrl/shopping-lists'),
+    headers: await _authHeaders(),
     body: jsonEncode({
-      'user_id': userId,
       'list_name': listName,
     }),
   );
@@ -35,15 +65,17 @@ class ShoppingListService {
     throw Exception('Kon lijst niet aanmaken (${response.statusCode})');
   }
 }
-  static Future<void> addItemByBarcode({
+
+
+
+static Future<void> addItemByBarcode({
   required String listId,
   required String barcode,
   int quantity = 1,
 }) async {
-  final uri = Uri.parse('$baseUrl/shopping-lists/$listId/items/by-barcode');
   final response = await http.post(
-    uri,
-    headers: {'Content-Type': 'application/json'},
+    Uri.parse('$baseUrl/shopping-lists/$listId/items/by-barcode'),
+    headers: await _authHeaders(),
     body: jsonEncode({
       'barcode': barcode,
       'quantity': quantity,
@@ -54,4 +86,24 @@ class ShoppingListService {
     throw Exception('Kon item niet toevoegen (${response.statusCode})');
   }
 }
+
+
+
+static Future<List<Map<String, dynamic>>> getUserLists() async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/shopping-lists'),
+    headers: await _authHeaders(),
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body) as List;
+    return data.map((e) => e as Map<String, dynamic>).toList();
+  } else {
+    throw Exception('Kon lijsten niet ophalen (${response.statusCode})');
+  }
+}
+
+
+
+
 }
