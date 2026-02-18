@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'edit_profile_page.dart'; 
+import 'edit_profile_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +17,9 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _avatarUrl;
   String _email = 'Loading...';
   String _displayName = 'User';
+  
+  // Standaard taal instellen
+  String _currentLanguage = 'English';
 
   @override
   void initState() {
@@ -24,10 +27,8 @@ class _ProfilePageState extends State<ProfilePage> {
     _getProfile();
   }
 
-  // 1. Data ophalen van de huidige ingelogde user
   Future<void> _getProfile() async {
     setState(() => _isLoading = true);
-
     try {
       final user = supabase.auth.currentUser;
       if (user != null) {
@@ -36,14 +37,14 @@ class _ProfilePageState extends State<ProfilePage> {
             .select('full_name')
             .eq('id', user.id)
             .maybeSingle();
-            
+
         setState(() {
           _email = user.email ?? 'Geen email';
           _avatarUrl = user.userMetadata?['avatar_url'];
-          _displayName = profileData?['full_name'] ?? 
-                         user.userMetadata?['full_name'] ?? 
-                         user.email?.split('@')[0] ?? 
-                         'User';
+          _displayName = profileData?['full_name'] ??
+              user.userMetadata?['full_name'] ??
+              user.email?.split('@')[0] ??
+              'User';
         });
       }
     } catch (e) {
@@ -57,30 +58,83 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // 2. Foto uploaden naar Supabase Storage
+  // --- TAAL SELECTIE LOGICA ---
+  void _showLanguagePicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Select Language",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 15),
+              _buildLanguageOption("English", "🇬🇧"),
+              _buildLanguageOption("Nederlands", "🇳🇱"),
+              _buildLanguageOption("Français", "🇫🇷"),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageOption(String language, String flag) {
+    bool isSelected = _currentLanguage == language;
+    return ListTile(
+      leading: Text(flag, style: const TextStyle(fontSize: 24)),
+      title: Text(
+        language,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.blueAccent : Colors.black,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blueAccent) : null,
+      onTap: () {
+        setState(() {
+          _currentLanguage = language;
+        });
+        Navigator.pop(context);
+        
+        // TIP: Hier zou je normaal gesproken je Localization package aanroepen 
+        // bijv: EasyLocalization.of(context)?.setLocale(Locale('nl'));
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Taal gewijzigd naar $language'), duration: const Duration(seconds: 1)),
+        );
+      },
+    );
+  }
+
   Future<void> _uploadProfilePicture() async {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image == null) return; 
+    if (image == null) return;
 
     setState(() => _isLoading = true);
-
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
       final imageBytes = await image.readAsBytes();
-      final String path = '/${user.id}/profile.jpg'; 
+      final String path = '/${user.id}/profile.jpg';
 
       await supabase.storage.from('avatars').uploadBinary(
             path,
             imageBytes,
-            fileOptions: const FileOptions(upsert: true), 
+            fileOptions: const FileOptions(upsert: true),
           );
 
-      final String publicUrl =
-          supabase.storage.from('avatars').getPublicUrl(path);
+      final String publicUrl = supabase.storage.from('avatars').getPublicUrl(path);
 
       await supabase.auth.updateUser(
         UserAttributes(data: {'avatar_url': publicUrl}),
@@ -89,12 +143,6 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         _avatarUrl = publicUrl;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profielfoto bijgewerkt!')),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -106,12 +154,10 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // 3. Uitloggen en terug naar Login scherm
   Future<void> _signOut() async {
     setState(() => _isLoading = true);
     try {
       await supabase.auth.signOut();
-      
       if (mounted) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
@@ -126,15 +172,11 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Helper om navigatie naar EditProfilePage te hergebruiken
   void _navigateToSettings() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const EditProfilePage()),
-    ).then((_) {
-      // Ververs data als we terugkomen (bijv. als de naam is aangepast)
-      _getProfile(); 
-    });
+    ).then((_) => _getProfile());
   }
 
   @override
@@ -146,10 +188,6 @@ class _ProfilePageState extends State<ProfilePage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
       ),
       body: _isLoading && _email == 'Loading...'
           ? const Center(child: CircularProgressIndicator())
@@ -158,8 +196,6 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  
-                  // --- AVATAR SECTIE ---
                   GestureDetector(
                     onTap: _uploadProfilePicture,
                     child: Stack(
@@ -174,13 +210,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           child: ClipOval(
                             child: _avatarUrl != null
-                                ? Image.network(
-                                    _avatarUrl!,
-                                    fit: BoxFit.cover,
-                                    key: ValueKey(_avatarUrl), 
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.person, size: 60, color: Colors.grey),
-                                  )
+                                ? Image.network(_avatarUrl!, fit: BoxFit.cover, key: ValueKey(_avatarUrl))
                                 : const Icon(Icons.person, size: 80, color: Colors.grey),
                           ),
                         ),
@@ -189,81 +219,44 @@ class _ProfilePageState extends State<ProfilePage> {
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
+                            decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
                             child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
                   const SizedBox(height: 15),
-                  
-                  Text(
-                    _displayName, 
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    _email,
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-
+                  Text(_displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(_email, style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   const SizedBox(height: 30),
-
-                  // --- MENU ITEMS ---
+                  
                   _buildSectionTitle("Account"),
-                  
-                  _buildListTile(
-                    Icons.email, 
-                    "Email", 
-                    hasArrow: true,
-                    onTap: _navigateToSettings,
-                  ),
-                  
+                  _buildListTile(Icons.email, "Email", hasArrow: true, onTap: _navigateToSettings),
                   _buildListTile(Icons.lock, "Password", hasArrow: true),
                   _buildListTile(Icons.delete, "Delete Account", hasArrow: true),
 
                   const SizedBox(height: 20),
-
-                  // Preferences - NU GEKOPPELD AAN SETTINGS
                   _buildSectionTitle("Preferences"),
-                  _buildListTile(
-                    Icons.restaurant, 
-                    "Diet & Allergens", 
-                    hasArrow: true,
-                    onTap: _navigateToSettings,
-                  ),
-                  _buildListTile(
-                    Icons.favorite, 
-                    "Health Goals", 
-                    hasArrow: true,
-                    onTap: _navigateToSettings,
-                  ),
-                  _buildListTile(
-                    Icons.attach_money, 
-                    "Budget", 
-                    hasArrow: true,
-                    onTap: _navigateToSettings,
-                  ),
+                  _buildListTile(Icons.restaurant, "Diet & Allergens", hasArrow: true, onTap: _navigateToSettings),
+                  _buildListTile(Icons.favorite, "Health Goals", hasArrow: true, onTap: _navigateToSettings),
 
                   const SizedBox(height: 20),
-
                   _buildSectionTitle("App Settings"),
                   _buildListTile(Icons.notifications, "Notifications", hasArrow: true),
-                  _buildListTile(Icons.language, "Language", hasArrow: true),
+                  
+                  // GEWIJZIGD: Language klikbaar gemaakt met subtitel voor huidige taal
+                  _buildListTile(
+                    Icons.language, 
+                    "Language", 
+                    subtitle: _currentLanguage, // Toon geselecteerde taal
+                    hasArrow: true, 
+                    onTap: _showLanguagePicker
+                  ),
+                  
                   _buildListTile(Icons.privacy_tip, "Privacy", hasArrow: true),
                   
-                  const SizedBox(height: 20),
-
-                  _buildSectionTitle("Analytics"),
-                  _buildListTile(Icons.bar_chart, "View Stats", hasArrow: true),
-
                   const SizedBox(height: 40),
-
-                  // --- LOGOUT KNOP ---
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -274,9 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         foregroundColor: Colors.red,
                       ),
-                      child: _isLoading 
-                        ? const CircularProgressIndicator(color: Colors.red) 
-                        : const Text("Logout", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text("Logout", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -291,27 +282,23 @@ class _ProfilePageState extends State<ProfilePage> {
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 10, left: 5),
-        child: Text(
-          title,
-          style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 14),
-        ),
+        child: Text(title, style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 14)),
       ),
     );
   }
 
-  Widget _buildListTile(IconData icon, String title, {bool hasArrow = false, VoidCallback? onTap}) {
+  Widget _buildListTile(IconData icon, String title, {String? subtitle, bool hasArrow = false, VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
       ),
       child: ListTile(
         leading: Icon(icon, color: Colors.blueAccent),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.blueAccent)) : null,
         trailing: hasArrow ? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey) : null,
         onTap: onTap,
       ),
