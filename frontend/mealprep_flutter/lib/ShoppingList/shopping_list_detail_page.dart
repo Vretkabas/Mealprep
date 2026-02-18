@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
+import 'package:mealprep_flutter/screens/product_screen.dart';
 
 class ShoppingListDetailPage extends StatefulWidget {
   final String listId;
@@ -89,6 +90,16 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                               // TODO: later checked status updaten via API
                             },
                           ),
+                          onTap: () {
+                          if (item['barcode'] != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProductScreen(barcode: item['barcode']),
+                              ),
+                            );
+                          }
+                        },
                         );
                       },
                     ),
@@ -100,7 +111,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                   child: TextField(
                     controller: _barcodeController,
                     decoration: const InputDecoration(
-                      labelText: 'Barcode toevoegen',
+                      labelText: 'Artikel toevoegen',
                       border: OutlineInputBorder(),
                     ),
                   ),
