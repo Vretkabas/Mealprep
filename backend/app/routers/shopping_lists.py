@@ -36,8 +36,13 @@ def add_item_barcode(list_id: str, data: dict, user_id: str = Depends(get_curren
     if not barcode:
         raise HTTPException(status_code=400, detail="Missing barcode")
 
-    return add_item_by_barcode(supabase, list_id, barcode, quantity)
+    result = add_item_by_barcode(supabase, list_id, barcode, quantity)
     
+    # ✅ Gooi een echte error als product niet gevonden
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    
+    return result
 
 @router.get("/shopping-lists")
 def get_user_lists(user_id: str = Depends(get_current_user)):

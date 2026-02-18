@@ -17,12 +17,10 @@ def get_product_id_by_barcode(supabase: Client, barcode: str) -> str | None:
     return None
 
 def add_item_by_barcode(supabase: Client, list_id: str, barcode: str, quantity: int = 1):
-    # Haal product_id op via barcode
-    product_id = get_product_id_by_barcode(supabase, barcode)
+    product_id = get_or_create_product(supabase, barcode)
     if not product_id:
-        return {"error": f"Product met barcode {barcode} niet gevonden"}
+        return {"error": f"Product met barcode {barcode} niet gevonden in OpenFoodFacts"}
 
-    # Check of item al bestaat
     existing = supabase.table("shopping_list_items") \
         .select("item_id, quantity") \
         .eq("list_id", list_id) \
@@ -32,23 +30,30 @@ def add_item_by_barcode(supabase: Client, list_id: str, barcode: str, quantity: 
     if existing.data:
         item = existing.data[0]
         new_quantity = item["quantity"] + quantity
-
-        supabase.table("shopping_list_items") \
+        update_result = supabase.table("shopping_list_items") \
             .update({"quantity": new_quantity}) \
             .eq("item_id", item["item_id"]) \
             .execute()
-
-        return {"updated": True}
-
+        if not update_result.data:
+            raise HTTPException(status_code=500, detail=f"Update mislukt: {update_result}")
+        return {"updated": True, "item_id": item["item_id"]}
     else:
-        supabase.table("shopping_list_items").insert({
+        insert_result = supabase.table("shopping_list_items").insert({
             "list_id": list_id,
             "product_id": product_id,
             "quantity": quantity,
             "is_checked": False
         }).execute()
+        if not insert_result.data:
+            raise HTTPException(status_code=500, detail=f"Insert mislukt: {insert_result}")
+        return {"created": True, "item_id": insert_result.data[0]["item_id"]}
 
-        return {"created": True}
+def get_product_id_by_barcode(supabase: Client, barcode: str) -> str | None:
+    result = supabase.table("products").select("product_id").eq("barcode", barcode).limit(1).execute()
+    print(f"[DEBUG] Barcode lookup '{barcode}': {result.data}")  # ← voeg dit toe
+    if result.data and len(result.data) > 0:
+        return result.data[0]["product_id"]
+    return None
 
 def get_list_items_with_names(supabase: Client, list_id: str):
     """
@@ -80,3 +85,38 @@ def get_list_items_with_names(supabase: Client, list_id: str):
         })
 
     return items_with_names
+
+
+def get_or_create_product(supabase: Client, barcode: str) -> str | None:
+    """Haal product_id op, of maak het aan als het nog niet bestaat."""
+    # Eerst checken
+    product_id = get_product_id_by_barcode(supabase, barcode)
+    if product_id:
+        return product_id
+
+    # Niet gevonden - haal data op uit scanned_items of food lookup
+    # Zoek in scanned_items (die heeft wel de barcode + product info via join)
+    from app.supabase_client import supabase as sb
+    
+    # Probeer product aan te maken via food service
+    from app.services.product_service import find_product_by_barcode
+    match = find_product_by_barcode(barcode)
+    
+    if not match:
+        return None
+    
+    # Upsert naar products tabel
+    result = supabase.table("products").upsert({
+        "barcode": barcode,
+        "product_name": match.product_name or f"Onbekend ({barcode})",
+        "brand": match.brands,
+        "energy_kcal": match.energy_kcal_100g,
+        "proteins_g": match.proteins_100g,
+        "carbohydrates_g": match.carbohydrates_100g,
+        "fat_g": match.fat_100g,
+        "sugars_g": match.sugars_100g,
+    }, on_conflict="barcode").execute()
+    
+    if result.data:
+        return result.data[0]["product_id"]
+    return None
