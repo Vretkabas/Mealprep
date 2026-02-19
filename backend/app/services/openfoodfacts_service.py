@@ -91,13 +91,23 @@ def log_scan_to_supabase(
                     "reason": "duplicate_scan",
                     "message": f"Scan already logged within last {duplicate_window_minutes} minutes"
                 }
+            product_response = supabase.table("products") \
+            .select("product_id") \
+            .eq("barcode", barcode) \
+            .limit(1) \
+            .execute()
+
+        product_id = None
+
+        if product_response.data and len(product_response.data) > 0:
+            product_id = product_response.data[0]["product_id"]
         
         # Nieuwe scan loggen
         scan_data = {
             "user_id": user_id,
             "barcode": barcode,
             "scan_mode": scan_mode,
-            "product_id": None,
+            "product_id": product_id,
             "scanned_at": datetime.now().isoformat(),
         }
         
