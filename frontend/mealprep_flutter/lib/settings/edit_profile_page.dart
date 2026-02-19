@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Zorg dat deze paden kloppen met jouw mappenstructuur
+import '../screens/barcode_scanner_screen.dart';
+import '../ShoppingList/shopping_list_page.dart';
+
 class EditProfilePage extends StatefulWidget {
   final int initialIndex;
   const EditProfilePage({super.key, this.initialIndex = 0});
@@ -13,8 +17,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final supabase = Supabase.instance.client;
   bool _isLoading = false;
 
-  // Huidige actieve tab (0 = Profile, 1 = Nutrition, 2 = Other)
+  // Huidige actieve tab in de instellingen (0 = Profile, 1 = Nutrition, 2 = Other)
   late int _selectedTabIndex;
+
+  // --- NAVBAR LOGICA ---
+  int _selectedIndex = 4; // 4 = Profile sectie
+  final Color brandGreen = const Color(0xFF00BFA5); // Kleur overgenomen van home_page
 
   // --- CONTROLLERS PROFILE ---
   final _nameController = TextEditingController();
@@ -271,6 +279,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  // --- NAVBAR NAVIGATIE ACTIE ---
+  void _onItemTapped(int index) {
+    if (_selectedIndex == index) return; // Doe niets als we al op deze tab zijn
+
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0:
+        Navigator.pushNamed(context, '/home');
+        break;
+      case 1:
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()));
+        break;
+      case 2:
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListsPage()));
+        break;
+      case 3:
+        print("Navigeer naar Favorites");
+        // Navigator.pushNamed(context, '/favorites'); // Voeg toe als je de route hebt
+        break;
+      case 4:
+        // We zijn al op de Profile / Settings pagina
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -331,6 +367,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ],
             ),
+            
+      // --- BOTTOM NAVIGATION BAR (Overgenomen van Home) ---
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: brandGreen,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), label: "Scan"),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
+          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
+        ],
+      ),
     );
   }
 
