@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
       case 2:
         // Lists pagina
         print("Navigeer naar Lists");
-         Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
+        Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
         break;
       case 3:
         // Favorites pagina
@@ -162,6 +162,7 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: false,
                 onTap: () {
                   print("Navigeer naar Lists");
+                  Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
                 },
               ),
 

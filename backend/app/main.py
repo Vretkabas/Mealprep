@@ -4,7 +4,7 @@ import os
 from .routers import products # import products router (scraper endpoint)
 from .routers import user # import user router (preferences endpoint)
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.barcode_api import router as barcode_router
+from app.routers.barcode_api import router as barcode_router
 from .routers import shopping_lists
 
 app = FastAPI(title="MealPrep API")

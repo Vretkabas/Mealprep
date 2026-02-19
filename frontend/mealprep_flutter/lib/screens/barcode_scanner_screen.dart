@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/screens/product_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:mealprep_flutter/services/food_api_service.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
