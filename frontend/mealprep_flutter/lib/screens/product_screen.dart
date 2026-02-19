@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/food_api_service.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:mealprep_flutter/services/shopping_list_service.dart';
 
 class ProductScreen extends StatefulWidget {
   final String barcode;
@@ -21,6 +22,54 @@ class _ProductScreenState extends State<ProductScreen> {
     super.initState();
     _fetchProduct();
   }
+Future<void> _showAddToListSheet() async {
+  try {
+    final lists = await ShoppingListService.getUserLists();
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        if (lists.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text("Geen lijsten gevonden"),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: lists.length,
+          itemBuilder: (context, index) {
+            final list = lists[index];
+
+            return ListTile(
+              title: Text(list['list_name']),
+              onTap: () async {
+                Navigator.pop(context);
+
+                await ShoppingListService.addItemByBarcode(
+                  listId: list['list_id'],
+                  barcode: widget.barcode,
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Product toegevoegd aan lijst"),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Fout: $e")),
+    );
+  }
+}
 
   Future<void> _fetchProduct() async {
     try {
@@ -120,6 +169,14 @@ class _ProductScreenState extends State<ProductScreen> {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 24),
+
+              ElevatedButton.icon(
+                onPressed: _showAddToListSheet,
+                icon: const Icon(Icons.playlist_add),
+                label: const Text("Toevoegen aan lijst"),
+              ),
           ],
         ),
       ),
@@ -146,5 +203,3 @@ class _ProductScreenState extends State<ProductScreen> {
       ),
     );
   }
-
-

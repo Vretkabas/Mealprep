@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, depends
 from typing import Optional
-from .openfoodfacts_service import get_product_by_barcode
+from ..services.openfoodfacts_service import get_product_by_barcode
+from auth import get_current_user
 
 router = APIRouter()
 
@@ -8,10 +9,10 @@ router = APIRouter()
 @router.get("/food/barcode/{barcode}")
 async def get_product(
     barcode: str,
-    user_id: Optional[str] = Query(None, description="User ID voor scan logging"),
+    user_id: str = Depends(get_current_user),
     log_scan: bool = Query(True, description="Log deze scan naar database"),
     allow_duplicates: bool = Query(False, description="Sta dubbele scans toe binnen time window"),
-    duplicate_window_minutes: int = Query(1440, description="Time window voor duplicate detection in minuten (default 24u)")
+    duplicate_window_minutes: int = Query(1440, description="Time window voor duplicate detection in minuten (24u)")
 ):
     # kijkt of er een product is met deze barcode in de database (SQLite) en logt de scan naar Supabase als log_scan True is
     try:

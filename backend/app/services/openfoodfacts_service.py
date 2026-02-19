@@ -1,9 +1,11 @@
+from email.header import Header
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
 import os
 from supabase import create_client, Client
+from fastapi import Header
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "openfoodfacts.db"
 
@@ -65,19 +67,20 @@ def check_recent_scan(
 
 def log_scan_to_supabase(
     barcode: str,
-    user_id: Optional[str] = None,
+    user_id: str,
     scan_mode: str = "barcode",
     allow_duplicates: bool = False,
     duplicate_window_minutes: int = 1440
 ) -> dict:
 
+    if not user_id:
+        return {"logged": False, "reason": "no_authenticated_user"}
+    
     if not supabase:
         print("Supabase not initialized, skipping scan log")
         return {"logged": False, "reason": "supabase_not_initialized"}
     
     try:
-        # Gebruik test user ID (tijdelijk omdat gebruikers nog niet aangemaakt worden)
-        user_id = user_id or "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
         
         # Check voor duplicaten als allow_duplicates False is
         if not allow_duplicates:
@@ -88,13 +91,23 @@ def log_scan_to_supabase(
                     "reason": "duplicate_scan",
                     "message": f"Scan already logged within last {duplicate_window_minutes} minutes"
                 }
+            product_response = supabase.table("products") \
+            .select("product_id") \
+            .eq("barcode", barcode) \
+            .limit(1) \
+            .execute()
+
+        product_id = None
+
+        if product_response.data and len(product_response.data) > 0:
+            product_id = product_response.data[0]["product_id"]
         
         # Nieuwe scan loggen
         scan_data = {
             "user_id": user_id,
             "barcode": barcode,
             "scan_mode": scan_mode,
-            "product_id": None,
+            "product_id": product_id,
             "scanned_at": datetime.now().isoformat(),
         }
         
@@ -114,7 +127,7 @@ def log_scan_to_supabase(
 
 def get_product_by_barcode(
     barcode: str,
-    user_id: Optional[str] = None,
+    user_id: str,
     log_scan: bool = True,
     allow_duplicate_scans: bool = False,
     duplicate_window_minutes: int = 1440
@@ -182,3 +195,6 @@ def get_product_by_barcode(
     except Exception as e:
         print(f"Fout bij ophalen product uit DB: {e}")
         return None
+    
+def get_current_user(authorization: str | None = Header(None)):
+    print("RAW AUTH HEADER:", authorization)

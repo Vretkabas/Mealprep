@@ -97,12 +97,5 @@ services:
 networks:
   smartpromo_network:
     driver: bridge
-    enable_ipv6: true
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16
-        - subnet: 2001:db8:1::/64
-    driver_opts:
-      com.docker.network.bridge.enable_ip_masquerade: "true"
 
   

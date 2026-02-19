@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/barcode_scanner_screen.dart';
+import 'ShoppingList/shopping_list_page.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -39,16 +40,12 @@ class _HomePageState extends State<HomePage> {
       case 1:
         // Scan pagina
         print("Navigeer naar Scan Pagina (via Navbar)");
-        Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const BarcodeScannerScreen(),
-        ),
-      );
+        Navigator.push(context,MaterialPageRoute(builder: (_) => const BarcodeScannerScreen(),),);
         break;
       case 2:
         // Lists pagina
         print("Navigeer naar Lists");
+        Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
         break;
       case 3:
         // Favorites pagina
@@ -165,6 +162,7 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: false,
                 onTap: () {
                   print("Navigeer naar Lists");
+                  Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
                 },
               ),
 

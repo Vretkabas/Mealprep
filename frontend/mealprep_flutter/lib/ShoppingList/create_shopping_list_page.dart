@@ -1,0 +1,91 @@
+import 'package:flutter/material.dart';
+import 'package:mealprep_flutter/services/shopping_list_service.dart';
+
+class Create_shopping_list_page extends StatefulWidget {
+  const Create_shopping_list_page({super.key});
+
+  @override
+  State<Create_shopping_list_page> createState() =>
+      _Create_shopping_list_pageState();
+}
+
+class _Create_shopping_list_pageState extends State<Create_shopping_list_page> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+
+  bool _isLoading = false;
+
+  Future<void> _createList() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await ShoppingListService.createList(
+        listName: _nameController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pop(context, true); // terug met success
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij aanmaken lijst: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Nieuwe Boodschappenlijst'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Naam van de lijst',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Vul een naam in';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _createList,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                      : const Text('Aanmaken'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
