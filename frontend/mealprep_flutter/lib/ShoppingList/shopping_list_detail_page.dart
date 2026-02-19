@@ -260,6 +260,29 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
               ),
             ),
 
+            Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: () {
+                // jouw AI suggesties logica
+                //_showAiSuggestions(context);
+              },
+              icon: const Icon(Icons.auto_awesome, size: 18), // sterretje icoon
+              label: const Text('Suggesties'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.black87,
+                side: BorderSide(color: Colors.grey.shade400),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
             const SizedBox(height: 12),
             Row(
               children: [
