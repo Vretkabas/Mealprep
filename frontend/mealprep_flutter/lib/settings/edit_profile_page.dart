@@ -20,11 +20,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _ageController = TextEditingController();
-  final _genderController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
   String? _selectedGoal;
   String? _selectedActivity;
+  String? _selectedGender;
+
+  final List<Map<String, String>> _genderOptions = [
+    {'value': 'Man', 'label': 'Male'},
+    {'value': 'Vrouw', 'label': 'Female'},
+    {'value': 'Other', 'label': 'Other'},
+  ];
 
   final List<Map<String, String>> _goalOptions = [
     {'value': 'lose', 'label': 'Lose Weight'},
@@ -71,7 +77,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _ageController.addListener(_calculateDailyCalories);
     _heightController.addListener(_calculateDailyCalories);
     _weightController.addListener(_calculateDailyCalories);
-    _genderController.addListener(_calculateDailyCalories);
   }
 
   @override
@@ -79,7 +84,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _nameController.dispose();
     _emailController.dispose();
     _ageController.dispose();
-    _genderController.dispose();
     _heightController.dispose();
     _weightController.dispose();
     super.dispose();
@@ -93,8 +97,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (weight == null || height == null || age == null) return;
 
     double bmr;
-    String gender = _genderController.text.toLowerCase();
-    if (gender.contains('male') || gender == 'man') {
+    if (_selectedGender == 'Man') {
       bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
     } else {
       bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
@@ -133,7 +136,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (data != null) {
         _ageController.text = data['age']?.toString() ?? '0';
-        _genderController.text = data['gender'] ?? '';
+        _selectedGender = data['gender'];
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight_current']?.toString() ?? '';
         _selectedGoal = data['goal'];
@@ -185,7 +188,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await supabase.from('user_settings').upsert({
         'user_id': user.id,
         'age': int.tryParse(_ageController.text),
-        'gender': _genderController.text,
+        'gender': _selectedGender,
         'height': double.tryParse(_heightController.text),
         'weight_current': double.tryParse(_weightController.text),
         'goal': _selectedGoal,
@@ -376,7 +379,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
         Row(children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Age"), _buildTextField(_ageController, "20", isNumber: true)])),
           const SizedBox(width: 15),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Gender"), _buildTextField(_genderController, "Male")])),
+          Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel("Gender"),
+        _buildDropdown(
+          value: _selectedGender,
+          hint: "Gender",
+          items: _genderOptions.map((o) => DropdownMenuItem(
+            value: o['value'],
+            child: Text(o['label']!),
+          )).toList(),
+          onChanged: (val) => setState(() {
+            _selectedGender = val;
+            _calculateDailyCalories();
+          }),
+        ),
+      ],
+    ),
+  ),
         ]),
         const SizedBox(height: 20),
         const Align(alignment: Alignment.centerLeft, child: Text("Body Measurements", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
