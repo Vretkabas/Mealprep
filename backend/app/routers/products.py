@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+import uuid
 from app.services.product_service import find_product_by_name, find_product_by_barcode, get_db_stats
 from app.services.database_service import get_database_service
 
@@ -96,6 +97,12 @@ def parse_date(date_str: str) -> datetime:
 
 # ==================== SCHEMAS ====================
 
+class AddToCartRequest(BaseModel):
+    user_id: str
+    list_id: str
+    product_id: str
+    quantity: int = 1
+
 # Schema for macros from scraper
 class MacrosSchema(BaseModel):
     energy_kj: Optional[float] = None
@@ -175,6 +182,53 @@ def extract_delhaize_id(url: str) -> str:
 
 
 # ==================== ENDPOINTS ====================
+
+@router.get("/products")
+async def get_products(store: str = None, limit: int = 50):
+    """
+    Haal producten op uit de Supabase 'products' tabel.
+    Je kunt optioneel filteren op een specifieke winkel (bijv. op brand of een store kolom).
+    """
+    try:
+        db = await get_database_service()
+        async with db.pool.acquire() as conn:
+            # Pas de query aan op basis van hoe je winkels opslaat (bijv. in 'brand' of een aparte store kolom)
+            if store:
+                 query = "SELECT product_id, product_name, brand, price, content, image_url FROM products WHERE brand ILIKE $1 LIMIT $2"
+                 rows = await conn.fetch(query, f"%{store}%", limit)
+            else:
+                 query = "SELECT product_id, product_name, brand, price, content, image_url FROM products LIMIT $1"
+                 rows = await conn.fetch(query, limit)
+            
+            products = [dict(row) for row in rows]
+            return products
+    except Exception as e:
+        print(f"Error fetching products: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/shopping-list/add")
+async def add_to_shopping_list(req: AddToCartRequest):
+    """
+    Voeg een product toe aan een specifieke shopping list (shopping_list_items tabel)
+    """
+    try:
+        item_id = str(uuid.uuid4())
+        db = await get_database_service()
+        async with db.pool.acquire() as conn:
+            # Pas aan naar jouw daadwerkelijke tabelnaam voor lijst-items (bijv. shopping_list_items)
+            await conn.execute(
+                """
+                INSERT INTO shopping_list_items (item_id, list_id, product_id, quantity) 
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (list_id, product_id) 
+                DO UPDATE SET quantity = shopping_list_items.quantity + $4
+                """,
+                item_id, req.list_id, req.product_id, req.quantity
+            )
+        return {"message": "Product succesvol toegevoegd aan lijst"}
+    except Exception as e:
+        print(f"Error adding to list: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/products/db-stats")
 def database_stats():

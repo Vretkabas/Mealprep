@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:easy_localization/easy_localization.dart'; // Nieuwe import
 
 import 'login_page.dart'; 
 import 'home_page.dart';
@@ -18,11 +19,10 @@ import 'quick_setup/quick_setup_page_3.dart';
 import 'quick_setup/quick_setup_page_4.dart';
 
 // ===============================
-//  Setup Dio (HTTP Client - behouden voor toekomstig gebruik)
+// Setup Dio
 // ===============================
 final dioProvider = Provider<Dio>((ref) {
   String baseUrl;
-
   if (kIsWeb) {
     baseUrl = 'http://localhost:8081';
   } else if (Platform.isAndroid) {
@@ -41,27 +41,25 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 // ===============================
-//  Supabase Initialization
+// Main Initialisatie
 // ===============================
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  
 
+  // Initialiseer Env & Supabase
   await dotenv.load(fileName: ".env");
-
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_KEY']!,
   );
 
-  runApp(const ProviderScope(child: MyApp()));
+ 
 }
 
-// Global accessor for Supabase client
 final supabase = Supabase.instance.client;
 
-// ===============================
-//  Backend test provider
-// ===============================
 final apiCheckProvider = FutureProvider<String>((ref) async {
   final dio = ref.watch(dioProvider);
   try {
@@ -73,10 +71,8 @@ final apiCheckProvider = FutureProvider<String>((ref) async {
 });
 
 // ===============================
-// App start
+// App Start
 // ===============================
-
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -85,17 +81,19 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Promo',
+      
+      // Localization instellingen
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
 
-      // ===============================================
-      // START DE APP DIRECT OP DE LOGIN PAGINA
-      // ===============================================
       home: const LoginPage(),
 
-      //  Routes definities
       routes: {
         '/scan': (_) => const BarcodeScannerScreen(),
         '/camera': (_) => const CameraScanScreen(),
