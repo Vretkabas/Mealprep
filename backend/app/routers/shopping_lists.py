@@ -38,7 +38,6 @@ def add_item_barcode(list_id: str, data: dict, user_id: str = Depends(get_curren
 
     result = add_item_by_barcode(supabase, list_id, barcode, quantity)
     
-    # ✅ Gooi een echte error als product niet gevonden
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     
@@ -52,3 +51,19 @@ def get_user_lists(user_id: str = Depends(get_current_user)):
         .execute()
 
     return result.data or []
+
+
+@router.patch("/shopping-lists/items/{item_id}")
+def update_item(item_id: str, data: dict, user_id: str = Depends(get_current_user)):
+    result = supabase.table("shopping_list_items") \
+        .update({"is_checked": data.get("is_checked")}) \
+        .eq("item_id", item_id) \
+        .execute()
+    return result.data[0]
+
+@router.delete("/shopping-lists/items/{item_id}", status_code=204)
+def delete_item(item_id: str, user_id: str = Depends(get_current_user)):
+    supabase.table("shopping_list_items") \
+        .delete() \
+        .eq("item_id", item_id) \
+        .execute()

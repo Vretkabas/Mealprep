@@ -103,7 +103,23 @@ static Future<List<Map<String, dynamic>>> getUserLists() async {
   }
 }
 
+static Future<void> updateItemChecked({
+  required String itemId,
+  required bool isChecked,
+}) async {
+  await http.patch(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+    headers: await _authHeaders(),
+    body: jsonEncode({'is_checked': isChecked}),
+  );
+}
 
+static Future<void> deleteItem({required String itemId}) async {
+  await http.delete(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+    headers: await _authHeaders(),
+  );
+}
 
 
 }
