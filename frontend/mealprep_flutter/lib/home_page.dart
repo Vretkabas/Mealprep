@@ -148,6 +148,8 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: false,
                 onTap: () {
                   print("Navigeer naar Planning");
+                  Navigator.pushNamed(context, '/store_selection');
+
                 },
               ),
               const SizedBox(height: 20),

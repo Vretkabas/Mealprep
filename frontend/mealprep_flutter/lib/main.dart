@@ -46,8 +46,7 @@ final dioProvider = Provider<Dio>((ref) {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialiseer Easy Localization
-  await EasyLocalization.ensureInitialized();
+  
 
   // Initialiseer Env & Supabase
   await dotenv.load(fileName: ".env");
@@ -56,20 +55,7 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_KEY']!,
   );
 
-  runApp(
-    ProviderScope(
-      child: EasyLocalization(
-        supportedLocales: const [
-          Locale('en', 'US'), 
-          Locale('nl', 'NL'), 
-          Locale('fr', 'FR')
-        ],
-        path: 'assets/translations', 
-        fallbackLocale: const Locale('en', 'US'),
-        child: const MyApp(),
-      ),
-    ),
-  );
+ 
 }
 
 final supabase = Supabase.instance.client;
