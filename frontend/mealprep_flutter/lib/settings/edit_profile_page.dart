@@ -23,8 +23,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _genderController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
-  final _goalController = TextEditingController();
-  final _activityController = TextEditingController();
+  String? _selectedGoal;
+  String? _selectedActivity;
+
+  final List<Map<String, String>> _goalOptions = [
+    {'value': 'lose', 'label': 'Lose Weight'},
+    {'value': 'maintain', 'label': 'Maintain Weight'},
+    {'value': 'gain', 'label': 'Gain Weight'},
+  ];
+
+  final List<Map<String, String>> _activityOptions = [
+    {'value': 'low', 'label': 'Low', 'subtitle': 'Almost no activity'},
+    {'value': 'slightly_active', 'label': 'Slightly active', 'subtitle': '1-3 times sport a week'},
+    {'value': 'medium', 'label': 'Medium', 'subtitle': '3-5 times sport a week'},
+    {'value': 'very_active', 'label': 'Very active', 'subtitle': '6-7 times sport a week'},
+  ];
 
   // --- NUTRITION STATE ---
   int _dailyCalories = 2000;
@@ -59,8 +72,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _heightController.addListener(_calculateDailyCalories);
     _weightController.addListener(_calculateDailyCalories);
     _genderController.addListener(_calculateDailyCalories);
-    _activityController.addListener(_calculateDailyCalories);
-    _goalController.addListener(_calculateDailyCalories);
   }
 
   @override
@@ -71,8 +82,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _genderController.dispose();
     _heightController.dispose();
     _weightController.dispose();
-    _goalController.dispose();
-    _activityController.dispose();
     super.dispose();
   }
 
@@ -92,17 +101,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     double multiplier = 1.2;
-    String activity = _activityController.text.toLowerCase();
-    if (activity.contains('light')) multiplier = 1.375;
-    if (activity.contains('moderat')) multiplier = 1.55;
-    if (activity.contains('active')) multiplier = 1.725;
+    if (_selectedActivity == 'slightly_active') multiplier = 1.375;
+    if (_selectedActivity == 'medium') multiplier = 1.55;
+    if (_selectedActivity == 'very_active') multiplier = 1.725;
 
     double tdee = bmr * multiplier;
     int finalCals = tdee.round();
 
-    String goal = _goalController.text.toLowerCase();
-    if (goal.contains('lose')) finalCals -= 500;
-    if (goal.contains('gain')) finalCals += 500;
+    if (_selectedGoal == 'lose') finalCals -= 500;
+    if (_selectedGoal == 'gain') finalCals += 300;
 
     setState(() => _dailyCalories = finalCals);
   }
@@ -114,37 +121,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // Laad Profiel Data
-      final profileData = await supabase.from('profiles').select().eq('id', user.id).maybeSingle();
-      if (profileData != null) {
-        _nameController.text = profileData['full_name'] ?? '';
-        _emailController.text = user.email ?? '';
-        _ageController.text = profileData['age']?.toString() ?? '';
-        _genderController.text = profileData['gender'] ?? '';
-        _heightController.text = profileData['height']?.toString() ?? '';
-        _weightController.text = profileData['weight']?.toString() ?? '';
-        _goalController.text = profileData['goal'] ?? '';
-        _activityController.text = profileData['activity_level'] ?? '';
-        _mealReminders = profileData['meal_reminders'] ?? true;
-        _weeklyProgress = profileData['weekly_progress'] ?? true;
-        _shoppingList = profileData['shopping_list'] ?? false;
-      }
+      // Alles in 1 call uit user_settings
+      final data = await supabase.from('user_settings').select().eq('user_id', user.id).maybeSingle();
 
-      // Laad Nutrition Data (user_settings)
-      final settingsData = await supabase.from('user_settings').select().eq('user_id', user.id).maybeSingle();
-      if (settingsData != null) {
+      // Email + naam altijd uit auth (staat niet in user_settings)
+      _nameController.text = user.userMetadata?['username'] ??
+                             user.userMetadata?['full_name'] ??
+                             user.email?.split('@')[0] ??
+                             'User';
+      _emailController.text = user.email ?? '';
+
+      if (data != null) {
+        _ageController.text = data['age']?.toString() ?? '0';
+        _genderController.text = data['gender'] ?? '';
+        _heightController.text = data['height']?.toString() ?? '';
+        _weightController.text = data['weight_current']?.toString() ?? '';
+        _selectedGoal = data['goal'];
+        _selectedActivity = data['activity_level'];
+
         setState(() {
-          _dailyCalories = settingsData['daily_calorie_target'] ?? 2000;
-          _carbPct = (settingsData['carb_percentage'] ?? 50).toDouble();
-          _proteinPct = (settingsData['protein_percentage'] ?? 30).toDouble();
-          _fatPct = (settingsData['fat_percentage'] ?? 20).toDouble();
+          _dailyCalories = data['daily_calorie_target'] ?? 2000;
+          _carbPct = (data['carb_percentage'] ?? 50).toDouble();
+          _proteinPct = (data['protein_percentage'] ?? 30).toDouble();
+          _fatPct = (data['fat_percentage'] ?? 20).toDouble();
 
           _selectedRestrictions.clear();
-          if (settingsData['allergens'] != null) {
-            _selectedRestrictions.addAll(List<String>.from(settingsData['allergens']));
+          if (data['allergens'] != null) {
+            _selectedRestrictions.addAll(List<String>.from(data['allergens']));
           }
-          if (settingsData['dietary_type'] != null) {
-            _selectedRestrictions.add(settingsData['dietary_type']);
+          if (data['dietary_type'] != null) {
+            _selectedRestrictions.add(data['dietary_type']);
           }
         });
       }
@@ -170,23 +176,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // A. Update Profiel tabel
-      await supabase.from('profiles').upsert({
-        'id': user.id,
-        'full_name': _nameController.text,
+      // A. Update username in auth metadata
+      await supabase.auth.updateUser(
+        UserAttributes(data: {'username': _nameController.text.trim()}),
+      );
+
+      // B. Update user_settings (profiel + body data)
+      await supabase.from('user_settings').upsert({
+        'user_id': user.id,
         'age': int.tryParse(_ageController.text),
         'gender': _genderController.text,
         'height': double.tryParse(_heightController.text),
-        'weight': double.tryParse(_weightController.text),
-        'goal': _goalController.text,
-        'activity_level': _activityController.text,
-        'meal_reminders': _mealReminders,
-        'weekly_progress': _weeklyProgress,
-        'shopping_list': _shoppingList,
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+        'weight_current': double.tryParse(_weightController.text),
+        'goal': _selectedGoal,
+        'activity_level': _selectedActivity,
+      }, onConflict: 'user_id');
 
-      // B. Update User Settings (Nutrition)
+      // C. Update user_settings (Nutrition)
       List<String> allergens = [];
       String? dietaryType;
       for (var item in _selectedRestrictions) {
@@ -381,9 +387,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Weight (kg)"), _buildTextField(_weightController, "75", isNumber: true)])),
         ]),
         _buildLabel("Goal"),
-        _buildTextField(_goalController, "Goal"),
+        _buildDropdown(
+          value: _selectedGoal,
+          hint: "Select your goal",
+          items: _goalOptions.map((o) => DropdownMenuItem(
+            value: o['value'],
+            child: Text(o['label']!),
+          )).toList(),
+          onChanged: (val) => setState(() {
+            _selectedGoal = val;
+            _calculateDailyCalories();
+          }),
+        ),
         _buildLabel("Activity Level"),
-        _buildTextField(_activityController, "Activity Level"),
+        _buildDropdown(
+          value: _selectedActivity,
+          hint: "Select activity level",
+          items: _activityOptions.map((o) => DropdownMenuItem(
+            value: o['value'],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(o['label']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(o['subtitle']!, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+              ],
+            ),
+          )).toList(),
+          onChanged: (val) => setState(() {
+            _selectedActivity = val;
+            _calculateDailyCalories();
+          }),
+        ),
       ],
     );
   }
@@ -498,6 +533,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Widget _buildLabel(String label) {
     return Padding(padding: const EdgeInsets.only(bottom: 8, left: 4), child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600)));
+  }
+
+  Widget _buildDropdown({
+    required String? value,
+    required String hint,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Text(hint, style: TextStyle(color: Colors.grey[400])),
+          isExpanded: true,
+          itemHeight: 56,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+          items: items,
+          onChanged: onChanged,
+        ),
+      ),
+    );
   }
 
   Widget _buildTextField(TextEditingController controller, String hint, {bool readOnly = false, bool isNumber = false}) {
