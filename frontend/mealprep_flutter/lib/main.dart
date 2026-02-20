@@ -5,9 +5,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:easy_localization/easy_localization.dart'; // Nieuwe import
 
-import 'login_page.dart'; 
+import 'login_page.dart';
 import 'home_page.dart';
 import 'register_page.dart';
 import 'settings/profile_page.dart';
@@ -17,6 +16,7 @@ import 'quick_setup/quick_setup_page_1.dart';
 import 'quick_setup/quick_setup_page_2.dart';
 import 'quick_setup/quick_setup_page_3.dart';
 import 'quick_setup/quick_setup_page_4.dart';
+import 'store_selection_page.dart';
 
 // ===============================
 // Setup Dio
@@ -55,7 +55,9 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_KEY']!,
   );
 
- 
+  runApp(
+    const ProviderScope(child: MyApp()),
+  );
 }
 
 final supabase = Supabase.instance.client;
@@ -82,11 +84,6 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Smart Promo',
       
-      // Localization instellingen
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
-
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
@@ -105,6 +102,7 @@ class MyApp extends StatelessWidget {
         '/quick_setup_2': (_) => const QuickSetupPage2(),
         '/quick_setup_3': (_) => const QuickSetupPage3(),
         '/quick_setup_4': (_) => const QuickSetupPage4(),
+        '/store_selection': (_) => const StoreSelectionPage(),
       },
     );
   }
