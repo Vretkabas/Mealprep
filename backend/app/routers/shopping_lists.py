@@ -55,8 +55,22 @@ def get_user_lists(user_id: str = Depends(get_current_user)):
 
 @router.patch("/shopping-lists/items/{item_id}")
 def update_item(item_id: str, data: dict, user_id: str = Depends(get_current_user)):
+
+    update_data = {}
+
+    if "is_checked" in data:
+        update_data["is_checked"] = data["is_checked"]
+
+    if "quantity" in data:
+        if data["quantity"] < 1:
+            raise HTTPException(status_code=400, detail="Quantity must be greater then 0")
+        update_data["quantity"] = data["quantity"]
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+
     result = supabase.table("shopping_list_items") \
-        .update({"is_checked": data.get("is_checked")}) \
+        .update(update_data) \
         .eq("item_id", item_id) \
         .execute()
     return result.data[0]

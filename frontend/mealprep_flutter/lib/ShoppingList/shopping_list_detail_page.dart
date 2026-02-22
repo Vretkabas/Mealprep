@@ -28,6 +28,56 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
     _loadItems();
   }
 
+Future<void> _editQuantity(String itemId, int currentQuantity) async {
+  final controller =
+      TextEditingController(text: currentQuantity.toString());
+
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Aantal aanpassen'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nieuw aantal',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuleren'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text);
+              if (value != null && value > 0) {
+                Navigator.pop(context, value);
+              }
+            },
+            child: const Text('Opslaan'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (result != null) {
+    try {
+      await ShoppingListService.updateItemQuantity(
+        itemId: itemId,
+        quantity: result,
+      );
+      await _loadItems();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij aanpassen: $e')),
+      );
+    }
+  }
+}
+
   Future<void> _loadItems() async {
     setState(() => _isLoading = true);
     try {
@@ -170,7 +220,15 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                                       : null,
                                 ),
                               ),
-                              subtitle: Text('Aantal: ${item['quantity']}'),
+                              subtitle: GestureDetector(
+                              onTap: () => _editQuantity(itemId, item['quantity']),
+                              child: Text(
+                                'Aantal: ${item['quantity']}',
+                                style: const TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
                               // Vierkante selectieknop
                               trailing: GestureDetector(
                                 onTap: () => _toggleSelection(itemId),
