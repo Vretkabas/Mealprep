@@ -39,6 +39,8 @@ dependencies:
   fl_chart: ^1.1.1
   supabase_flutter: ^2.0.0
   flutter_dotenv: ^5.0.3
+  easy_localization: ^3.0.7
+  flutter_svg: ^2.0.10+1
 
   
 
@@ -74,6 +76,11 @@ flutter:
   assets:
     - 'assets/images/Logo_mealprep.jpg'
     - 'assets/images/Logo2_mealprep.jpg'
+    - 'assets/images/ah_logo.jpg'
+    - 'assets/images/jumbo_logo.png'
+    - 'assets/images/carrefour_logo.png'
+    - 'assets/images/delhaize_logo.svg'
+    - 'assets/images/lidl_logo.png'
     - .env
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

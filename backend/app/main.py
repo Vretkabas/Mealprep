@@ -11,7 +11,7 @@ app = FastAPI(title="MealPrep API")
 
 # include products router
 app.include_router(products.router)
-
+app.include_router(shopping_lists.router)
 app.include_router(barcode_router)
 app.include_router(user.router)
 app.include_router(suggestions.router)

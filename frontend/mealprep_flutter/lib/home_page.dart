@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/barcode_scanner_screen.dart';
+import 'ShoppingList/shopping_list_page.dart';
 
 
 class HomePage extends StatefulWidget {
@@ -34,20 +35,17 @@ class _HomePageState extends State<HomePage> {
     switch (index) {
       case 0:
          print("Navigeer naar homepage");
+         Navigator.pushNamed(context, '/home');
         break;
       case 1:
         // Scan pagina
         print("Navigeer naar Scan Pagina (via Navbar)");
-        Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const BarcodeScannerScreen(),
-        ),
-      );
+        Navigator.push(context,MaterialPageRoute(builder: (_) => const BarcodeScannerScreen(),),);
         break;
       case 2:
         // Lists pagina
         print("Navigeer naar Lists");
+        Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
         break;
       case 3:
         // Favorites pagina
@@ -56,6 +54,7 @@ class _HomePageState extends State<HomePage> {
       case 4:
         // Profile pagina
         print("Navigeer naar Profile");
+        Navigator.pushNamed(context, '/profile');
         break;
     }
   }
@@ -67,15 +66,29 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _fetchUserData() async {
-    // TODO: Hier later de Supabase logica toevoegen
-    // final user = Supabase.instance.client.auth.currentUser;
-    // if (user?.userMetadata != null) {
-    //   setState(() {
-    //      _userName = user!.userMetadata!['username'] ?? "User";
-    //   });
-    // }
-  }
+  final user = Supabase.instance.client.auth.currentUser;
 
+  if (user != null) {
+    try {
+      // 1. Haal de naam op uit de 'profiles' tabel in de database
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      setState(() {
+        // We checken eerst de database, dan de metadata, en anders "User"
+        _userName = data?['full_name'] ?? 
+                    user.userMetadata?['full_name'] ?? 
+                    user.userMetadata?['display_name'] ?? 
+                    "User";
+      });
+    } catch (e) {
+      print("Fout bij ophalen naam: $e");
+    }
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,7 +133,7 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: true,
                 onTap: () {
                   print("Navigeer naar Scan Pagina (via Card)");
-                  // Navigator.pushNamed(context, '/scan');
+                   Navigator.pushNamed(context, '/scan');
                 },
               ),
               const SizedBox(height: 20),
@@ -135,6 +148,8 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: false,
                 onTap: () {
                   print("Navigeer naar Planning");
+                  Navigator.pushNamed(context, '/store_selection');
+
                 },
               ),
               const SizedBox(height: 20),
@@ -149,6 +164,7 @@ class _HomePageState extends State<HomePage> {
                 isPrimary: false,
                 onTap: () {
                   print("Navigeer naar Lists");
+                  Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
                 },
               ),
 
