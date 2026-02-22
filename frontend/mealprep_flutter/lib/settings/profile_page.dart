@@ -233,8 +233,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   _buildSectionTitle("Account"),
                   _buildListTile(Icons.email, "Email", hasArrow: true, onTap: _navigateToSettings),
-                  _buildListTile(Icons.lock, "Password", hasArrow: true),
-                  _buildListTile(Icons.delete, "Delete Account", hasArrow: true),
+                  _buildListTile(Icons.lock, "Password", hasArrow: true, onTap: _navigateToSettings),
+                  _buildListTile(Icons.delete, "Delete Account", hasArrow: true, onTap: _navigateToSettings),
 
                   const SizedBox(height: 20),
                   _buildSectionTitle("Preferences"),
@@ -243,7 +243,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   const SizedBox(height: 20),
                   _buildSectionTitle("App Settings"),
-                  _buildListTile(Icons.notifications, "Notifications", hasArrow: true),
+                  _buildListTile(Icons.notifications, "Notifications", hasArrow: true, onTap: _navigateToSettings),
                   
                   // GEWIJZIGD: Language klikbaar gemaakt met subtitel voor huidige taal
                   _buildListTile(
