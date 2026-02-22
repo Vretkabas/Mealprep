@@ -546,6 +546,45 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/products/search")
+async def search_products(q: str, store_name: Optional[str] = None):
+    """Zoek producten op naam, optioneel gefilterd op winkel (colruyt_category)."""
+    try:
+        db = await get_database_service()
+        async with db.pool.acquire() as conn:
+            if store_name:
+                rows = await conn.fetch(
+                    """
+                    SELECT p.product_id, p.barcode, p.product_name, p.brand,
+                           p.image_url, p.price, p.content, p.colruyt_category
+                    FROM products p
+                    WHERE LOWER(p.product_name) LIKE LOWER($1)
+                    ORDER BY p.product_name
+                    LIMIT 50
+                    """,
+                    f"%{q}%"
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT product_id, barcode, product_name, brand,
+                           image_url, price, content, colruyt_category
+                    FROM products
+                    WHERE LOWER(product_name) LIKE LOWER($1)
+                    ORDER BY product_name
+                    LIMIT 50
+                    """,
+                    f"%{q}%"
+                )
+        return {
+            "status": "success",
+            "total": len(rows),
+            "products": [dict(r) for r in rows],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/products/promotions")
 async def get_promotions(store_name: Optional[str] = None):
     """Get active promotions, optionally filtered by store name."""
