@@ -26,6 +26,12 @@ auth:
 https://supabase.com/blog/flutter-authentication
 https://supabase.com/docs/guides/getting-started/tutorials/with-flutter
 
+# get all products from Colruyt
+we will use GCS bucket from BelgianNoise:
+https://github.com/BelgianNoise/colruyt-products-scraper
+google storage bucket:
+https://storage.googleapis.com/storage/v1/b/colruyt-products/o
+
 
 User settings protein calculation:
 https://reference.medscape.com/calculator/846/mifflin-st-jeor-equation
@@ -34,3 +40,5 @@ https://openfoodfacts.github.io/openfoodfacts-server/api/tutorial-off-api/ ==> O
 https://pub.dev/packages/mobile_scanner ==> mobile scanner<br>
 https://pub.dev/packages/fl_chart ==> piechart<br>
 https://supabase.com/docs/guides/getting-started/quickstarts/flutter ==> flutter aan supabase verbinden<br>
+
+

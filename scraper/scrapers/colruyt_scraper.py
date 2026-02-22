@@ -109,8 +109,8 @@ def run(playwright: Playwright):
     time.sleep(random.uniform(2.0, 3.0))
 
     # TEST MODE: Set to True to only scrape 1 page for faster testing
-    TEST_MODE = True
-    MAX_TEST_PAGES = 1
+    TEST_MODE = False
+    MAX_TEST_PAGES = 99
 
     index = 1
     while True:
@@ -277,25 +277,46 @@ def run(playwright: Playwright):
 
             soup = BeautifulSoup(page_obj.content(), "html.parser")
 
-            # Get discount - check multiple possible locations
+            # Get product name from h1
+            product_name = None
+            h1 = soup.find("h1")
+            if h1:
+                product_name = h1.get_text(strip=True)
+
+            # Get discount - grab the full promo text from promos__row--benefits
             discount = None
 
-            # Method 1: Look in div.promos__row--benefits > strong
             promo_div = soup.find("div", class_="promos__row--benefits")
             if promo_div:
+                # Get the main discount from <strong> (e.g. "-20%", "2+1 GRATIS")
                 strong = promo_div.find("strong")
                 if strong:
                     discount = strong.get_text(strip=True)
 
-            # Method 2: Look in span.promos_description > strong (alternative structure)
-            if not discount:
-                promo_span = soup.find("span", class_="promos_description")
-                if promo_span:
-                    strong = promo_span.find("strong")
-                    if strong:
-                        discount = strong.get_text(strip=True)
+                # Check for extra context in promos__description-note (e.g. "vanaf 16 st")
+                note_span = promo_div.find("span", class_="promos__description-note")
+                if note_span and discount:
+                    note_text = note_span.get_text(strip=True)
+                    if note_text:
+                        discount = f"{discount} {note_text}"
 
-            # Method 3: Look for any strong with percentage or GRATIS pattern
+            # Fallback: try span.promos__description or promos__description-text
+            if not discount:
+                for class_name in ["promos__description", "promos__description-text"]:
+                    promo_span = soup.find("span", class_=class_name)
+                    if promo_span:
+                        strong = promo_span.find("strong")
+                        if strong:
+                            discount = strong.get_text(strip=True)
+                            # Also grab note if present
+                            note_span = promo_span.find("span", class_="promos__description-note")
+                            if note_span:
+                                note_text = note_span.get_text(strip=True)
+                                if note_text:
+                                    discount = f"{discount} {note_text}"
+                            break
+
+            # Last resort: any <strong> with % or GRATIS
             if not discount:
                 for strong in soup.find_all("strong"):
                     text = strong.get_text(strip=True)
@@ -303,7 +324,7 @@ def run(playwright: Playwright):
                         discount = text
                         break
 
-            # Get original price from price-info spans
+            # Parse price from price-info__price-label spans
             price = None
             price_label = soup.find("div", class_="price-info__price-label")
             if price_label:
@@ -312,9 +333,8 @@ def run(playwright: Playwright):
                 if rounded and decimal:
                     try:
                         price = float(f"{rounded.get_text(strip=True)}.{decimal.get_text(strip=True)}")
-                        print(f"[cyan]  -> Price: {price}[/cyan]")
                     except ValueError:
-                        print(f"[yellow]  -> Could not parse price[/yellow]")
+                        price = None
 
             # Get link to fic.colruytgroup.com or rti.colruytgroup.com for barcodes
             barcodes = []
@@ -410,18 +430,20 @@ def run(playwright: Playwright):
 
             return {
                 "url": product_url,
+                "name": product_name,
                 "discount": discount,
-                "barcodes": barcodes,  # Return list of barcodes instead of single
                 "price": price,
+                "barcodes": barcodes  # Return list of barcodes instead of single
             }
 
         except Exception as e:
             print(f"[red]Error with product {product_url}: {e}[/red]")
             return {
                 "url": product_url,
+                "name": None,
                 "discount": None,
-                "barcodes": [],
                 "price": None,
+                "barcodes": []
             }
 
     # Process products in batches of 5
@@ -443,13 +465,14 @@ def run(playwright: Playwright):
                 for barcode in result["barcodes"]:
                     product_data.append({
                         "url": result["url"],
+                        "name": result.get("name"),
                         "discount": result["discount"],
-                        "barcode": barcode,
                         "price": result.get("price"),
+                        "barcode": barcode
                     })
                 barcodes_str = ", ".join(result["barcodes"])
                 price_str = f"€{result.get('price')}" if result.get("price") else "N/A"
-                print(f"[green]  Discount: {result['discount']} | Price: {price_str} | Barcodes: {barcodes_str}[/green]")
+                print(f"[green]  {result.get('name', '?')} | Discount: {result['discount']} | Price: {price_str} | Barcodes: {barcodes_str}[/green]")
             else:
                 missing = []
                 if not result["discount"]:
@@ -475,6 +498,7 @@ def run(playwright: Playwright):
     print(f"\n[bold cyan]All valid products (with discount and barcode):[/bold cyan]")
     for data in product_data:
         print(f"[blue]URL:[/blue] {data['url']}")
+        print(f"  [green]Name:[/green] {data.get('name', 'N/A')}")
         print(f"  [green]Discount:[/green] {data['discount']}")
         print(f"  [green]Price:[/green] €{data.get('price', 'N/A')}")
         print(f"  [green]Barcode:[/green] {data['barcode']}")
@@ -502,9 +526,10 @@ def send_to_api(product_data: list, promotion_from: str, promotion_to: str, api_
         "products": [
             {
                 "url": item["url"],
+                "name": item.get("name"),
                 "discount": item["discount"],
                 "barcode": item["barcode"],
-                "price": item.get("price"),
+                "price": item.get("price")
             }
             for item in product_data
         ],
