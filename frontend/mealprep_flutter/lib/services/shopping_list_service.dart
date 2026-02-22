@@ -136,4 +136,15 @@ static Future<void> updateItemQuantity({
   }
 }
 
+static Future<void> deleteList({required String listId}) async {
+  final response = await http.delete(
+    Uri.parse('$baseUrl/shopping-lists/$listId'),
+    headers: await _authHeaders(),
+  );
+
+  if (response.statusCode != 204) {
+    throw Exception('Kon lijst niet verwijderen (${response.statusCode})');
+  }
+}
+
 }

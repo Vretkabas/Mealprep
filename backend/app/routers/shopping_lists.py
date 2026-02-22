@@ -81,3 +81,25 @@ def delete_item(item_id: str, user_id: str = Depends(get_current_user)):
         .delete() \
         .eq("item_id", item_id) \
         .execute()
+
+
+@router.delete("/shopping-lists/{list_id}", status_code=204)
+def delete_shopping_list(list_id: str, user_id: str = Depends(get_current_user)):
+
+    # Controleer of lijst van ingelogde gebruiker is
+    existing = supabase.table("shopping_lists") \
+        .select("list_id") \
+        .eq("list_id", list_id) \
+        .eq("user_id", user_id) \
+        .execute()
+
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Lijst niet gevonden")
+
+    # lijst verwijderen
+    supabase.table("shopping_lists") \
+        .delete() \
+        .eq("list_id", list_id) \
+        .execute()
+
+    return
