@@ -27,36 +27,19 @@ class _ProfilePageState extends State<ProfilePage> {
     _getProfile();
   }
 
-  Future<void> _getProfile() async {
-    setState(() => _isLoading = true);
-    try {
-      final user = supabase.auth.currentUser;
-      if (user != null) {
-        final profileData = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', user.id)
-            .maybeSingle();
+Future<void> _getProfile() async {
+  final user = supabase.auth.currentUser;
+  if (user == null) return;
 
-        setState(() {
-          _email = user.email ?? 'Geen email';
-          _avatarUrl = user.userMetadata?['avatar_url'];
-          _displayName = profileData?['full_name'] ??
-              user.userMetadata?['full_name'] ??
-              user.email?.split('@')[0] ??
-              'User';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij laden profiel: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+  setState(() {
+    _email = user.email ?? 'Geen email';
+    _avatarUrl = user.userMetadata?['avatar_url'];
+    _displayName = user.userMetadata?['username'] ??
+                   user.email?.split('@')[0] ??
+                   'User';
+    _isLoading = false;
+  });
+}
 
   // --- TAAL SELECTIE LOGICA ---
   void _showLanguagePicker() {
@@ -105,9 +88,6 @@ class _ProfilePageState extends State<ProfilePage> {
         });
         Navigator.pop(context);
         
-        // TIP: Hier zou je normaal gesproken je Localization package aanroepen 
-        // bijv: EasyLocalization.of(context)?.setLocale(Locale('nl'));
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Taal gewijzigd naar $language'), duration: const Duration(seconds: 1)),
         );
@@ -116,6 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _uploadProfilePicture() async {
+    //TODO: profile picture doesnt work
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
@@ -172,11 +153,25 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _navigateToSettings() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const EditProfilePage()),
-    ).then((_) => _getProfile());
+  // navigate to profile settings page with initial index 0 (account tab) index is handled in edit_profile_page.dart
+  void _navigateToProfileSettings() {
+    Navigator.push(context, MaterialPageRoute(
+    builder: (_) => const EditProfilePage(initialIndex: 0),
+    ));
+  }
+
+  // navigate to diet preferences page with initial index 1 (diet & allergens tab) index is handled in edit_profile_page.dart
+  void _navigateToDietPreferences() {
+    Navigator.push(context, MaterialPageRoute(
+    builder: (_) => const EditProfilePage(initialIndex: 1),
+    ));
+  }
+
+  // same as above but with initial index 2 (other settings like delete, notifications, ..)
+  void _navigateToOtherTab() {
+    Navigator.push(context, MaterialPageRoute(
+    builder: (_) => const EditProfilePage(initialIndex: 2),
+    ));
   }
 
   @override
@@ -232,18 +227,18 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 30),
                   
                   _buildSectionTitle("Account"),
-                  _buildListTile(Icons.email, "Email", hasArrow: true, onTap: _navigateToSettings),
-                  _buildListTile(Icons.lock, "Password", hasArrow: true),
-                  _buildListTile(Icons.delete, "Delete Account", hasArrow: true),
+                  _buildListTile(Icons.account_circle, "Profile Settings", hasArrow: true, onTap: _navigateToProfileSettings),
+                  _buildListTile(Icons.lock, "Password", hasArrow: true, onTap: _navigateToOtherTab),
+                  _buildListTile(Icons.delete, "Delete Account", hasArrow: true, onTap: _navigateToOtherTab),
 
                   const SizedBox(height: 20),
                   _buildSectionTitle("Preferences"),
-                  _buildListTile(Icons.restaurant, "Diet & Allergens", hasArrow: true, onTap: _navigateToSettings),
-                  _buildListTile(Icons.favorite, "Health Goals", hasArrow: true, onTap: _navigateToSettings),
+                  _buildListTile(Icons.restaurant, "Diet & Allergens", hasArrow: true, onTap: _navigateToDietPreferences),
+                  _buildListTile(Icons.favorite, "Health Goals", hasArrow: true, onTap: _navigateToDietPreferences),
 
                   const SizedBox(height: 20),
                   _buildSectionTitle("App Settings"),
-                  _buildListTile(Icons.notifications, "Notifications", hasArrow: true),
+                  _buildListTile(Icons.notifications, "Notifications", hasArrow: true , onTap: _navigateToOtherTab),
                   
                   // GEWIJZIGD: Language klikbaar gemaakt met subtitel voor huidige taal
                   _buildListTile(

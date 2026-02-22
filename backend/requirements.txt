@@ -5,4 +5,5 @@ asyncpg==0.29.0
 redis==5.0.1
 requests
 supabase>=2.0.0
+google-genai
 python-jose

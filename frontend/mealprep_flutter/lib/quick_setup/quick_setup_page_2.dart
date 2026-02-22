@@ -124,7 +124,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 // ============================================
                 // Input: Voor hoeveel personen koken?
                 // ============================================
-                _buildLabel("Voor hoeveel personen wil je koken?", textDark),
+                _buildLabel("How many people do you want to cook for?", textDark),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -227,11 +227,11 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                     children: [
                       CheckboxListTile(
                         title: const Text(
-                          "Ik geef toestemming voor het verwerken van mijn gezondheidsgegevens (gewicht, lengte, leeftijd) om een passend voedingsschema te genereren.",
+                          "I consent to the processing of my health data (weight, height, age) in order to generate a suitable nutrition plan.",
                           style: TextStyle(fontSize: 12),
                         ),
                         subtitle: const Text(
-                          "Je gegevens worden veilig opgeslagen en alleen hiervoor gebruikt.",
+                          "Your data is securely stored and only used for this purpose.",
                           style: TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                         activeColor: brandGreen,
@@ -251,7 +251,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              "Toestemming is verplicht voor deze app.",
+                              "Consent is required for this app.",
                               style: TextStyle(color: Colors.red, fontSize: 12),
                             ),
                           ),

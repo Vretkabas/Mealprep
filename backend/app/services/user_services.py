@@ -1,4 +1,3 @@
-import uuid
 from typing import List, Optional, Dict, Any
 from app.services.database_service import get_database_service
 
@@ -84,7 +83,6 @@ async def save_user_settings(
 ) -> str:
     """Insert or update user settings, return preference_id."""
     db = await get_database_service()
-    preference_id = str(uuid.uuid4())
 
     # Calculate daily targets based on user info
     daily_calories, daily_protein = calculate_daily_targets(
@@ -95,25 +93,24 @@ async def save_user_settings(
         await conn.execute(
             """
             INSERT INTO user_settings (
-                preference_id, user_id, goal, persons_count, age, height,
+                user_id, goal, persons_count, age, height,
                 weight_current, weight_target, gender,
                 activity_level, allergens,
                 daily_calorie_target, daily_protein_target
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             ON CONFLICT (user_id) DO UPDATE SET
-                goal = $3,
-                persons_count = $4,
-                age = $5,
-                height = $6,
-                weight_current = $7,
-                weight_target = $8,
-                gender = $9,
-                activity_level = $10,
-                allergens = $11,
-                daily_calorie_target = $12,
-                daily_protein_target = $13
+                goal = $2,
+                persons_count = $3,
+                age = $4,
+                height = $5,
+                weight_current = $6,
+                weight_target = $7,
+                gender = $8,
+                activity_level = $9,
+                allergens = $10,
+                daily_calorie_target = $11,
+                daily_protein_target = $12
             """,
-            preference_id,
             user_id,
             goal,
             persons_count,
@@ -128,7 +125,7 @@ async def save_user_settings(
             daily_protein,
         )
 
-    return preference_id
+    return user_id
 
 
 async def get_user_settings(user_id: str) -> Optional[Dict[str, Any]]:
