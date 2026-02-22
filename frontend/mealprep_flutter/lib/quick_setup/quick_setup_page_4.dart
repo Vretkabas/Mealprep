@@ -96,17 +96,29 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
         },
       );
       print("Response: ${response.data}");
+
+      // Alleen naar home als de API call gelukt is
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
     } catch (e) {
       print("Error sending preferences: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Fout bij opslaan van je gegevens. Probeer opnieuw."),
+          backgroundColor: Colors.redAccent,
+          action: SnackBarAction(
+            label: "Opnieuw",
+            textColor: Colors.white,
+            onPressed: _finishSetup,
+          ),
+        ),
+      );
     }
-
-    // --- NAVIGATIE NAAR HOME ---
-    // pushAndRemoveUntil zorgt ervoor dat je niet terug kan klikken naar de setup
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-      (route) => false,
-    );
   }
 
   @override

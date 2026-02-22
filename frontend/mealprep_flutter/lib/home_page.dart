@@ -65,30 +65,18 @@ class _HomePageState extends State<HomePage> {
     _fetchUserData(); // Alvast klaarzetten voor later
   }
 
-  Future<void> _fetchUserData() async {
+Future<void> _fetchUserData() async {
   final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return;
 
-  if (user != null) {
-    try {
-      // 1. Haal de naam op uit de 'profiles' tabel in de database
-      final data = await Supabase.instance.client
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .maybeSingle();
-
-      setState(() {
-        // We checken eerst de database, dan de metadata, en anders "User"
-        _userName = data?['full_name'] ?? 
-                    user.userMetadata?['full_name'] ?? 
-                    user.userMetadata?['display_name'] ?? 
-                    "User";
-      });
-    } catch (e) {
-      print("Fout bij ophalen naam: $e");
-    }
-  }
+  setState(() {
+    _userName = user.userMetadata?['username'] ??
+                user.userMetadata?['full_name'] ??
+                user.email?.split('@')[0] ??
+                "User";
+  });
 }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
