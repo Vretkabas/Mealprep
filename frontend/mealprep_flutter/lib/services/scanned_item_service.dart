@@ -1,9 +1,11 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 class ScannedItemService {
   // backend url
-  static const String baseUrl = 'http://localhost:8000'; 
+  static const String baseUrl = 'http://10.0.2.2:8000'; 
   
   Future<void> logScan({
     required String barcode,
@@ -14,16 +16,25 @@ class ScannedItemService {
     String? userId,
   }) async {
     try {
+      final session = Supabase.instance.client.auth.currentSession;
+      final token = session?.accessToken;
+
+      if (token == null) {
+        throw Exception("User not authenticated");
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/scans/log'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({
           'barcode': barcode,
           'scan_mode': scanMode,
           'product_id': productId,
           'ai_analysis': aiAnalysis,
           'health_score': healthScore,
-          'user_id': userId,
         }),
       );
 
@@ -45,9 +56,15 @@ class ScannedItemService {
     int limit = 50,
   }) async {
     try {
+      final session = Supabase.instance.client.auth.currentSession;
+      final token = session?.accessToken;
+
       final response = await http.get(
         Uri.parse('$baseUrl/api/scans/user/$userId?limit=$limit'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode == 200) {

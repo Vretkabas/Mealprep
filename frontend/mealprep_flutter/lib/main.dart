@@ -4,10 +4,9 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'login_page.dart'; 
+import 'login_page.dart';
 import 'home_page.dart';
 import 'register_page.dart';
 import 'settings/profile_page.dart';
@@ -17,13 +16,13 @@ import 'quick_setup/quick_setup_page_1.dart';
 import 'quick_setup/quick_setup_page_2.dart';
 import 'quick_setup/quick_setup_page_3.dart';
 import 'quick_setup/quick_setup_page_4.dart';
+import 'store_selection_page.dart';
 
 // ===============================
-//  Setup Dio (HTTP Client - behouden voor toekomstig gebruik)
+// Setup Dio
 // ===============================
 final dioProvider = Provider<Dio>((ref) {
   String baseUrl;
-
   if (kIsWeb) {
     baseUrl = 'http://localhost:8081';
   } else if (Platform.isAndroid) {
@@ -42,27 +41,27 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 // ===============================
-//  Supabase Initialization
+// Main Initialisatie
 // ===============================
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  
 
+  // Initialiseer Env & Supabase
   await dotenv.load(fileName: ".env");
-
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_KEY']!,
   );
 
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    const ProviderScope(child: MyApp()),
+  );
 }
 
-// Global accessor for Supabase client
 final supabase = Supabase.instance.client;
 
-// ===============================
-//  Backend test provider
-// ===============================
 final apiCheckProvider = FutureProvider<String>((ref) async {
   final dio = ref.watch(dioProvider);
   try {
@@ -74,10 +73,8 @@ final apiCheckProvider = FutureProvider<String>((ref) async {
 });
 
 // ===============================
-// App start
+// App Start
 // ===============================
-
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -86,17 +83,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Smart Promo',
+      
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
 
-      // ===============================================
-      // START DE APP DIRECT OP DE LOGIN PAGINA
-      // ===============================================
       home: const LoginPage(),
 
-      //  Routes definities
       routes: {
         '/scan': (_) => const BarcodeScannerScreen(),
         '/camera': (_) => const CameraScanScreen(),
@@ -108,6 +102,7 @@ class MyApp extends StatelessWidget {
         '/quick_setup_2': (_) => const QuickSetupPage2(),
         '/quick_setup_3': (_) => const QuickSetupPage3(),
         '/quick_setup_4': (_) => const QuickSetupPage4(),
+        '/store_selection': (_) => const StoreSelectionPage(),
       },
     );
   }

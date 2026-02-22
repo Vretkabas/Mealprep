@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 from typing import Optional, List
 from dataclasses import dataclass
+import requests
 
 # Database path
 DB_PATH = Path(__file__).parent.parent / "data" / "openfoodfacts.db"
@@ -108,12 +109,51 @@ def find_product_by_barcode(barcode: str) -> Optional[ProductMatch]:
                 salt_100g=row["salt_100g"],
                 match_score=100.0  # Exact barcode match
             )
-        return None
+
+        # Not found locally → try OpenFoodFacts API as fallback
+        return find_product_by_barcode_api(barcode)
 
     except Exception as e:
         print(f"Error finding product by barcode: {e}")
         return None
 
+def find_product_by_barcode_api(barcode: str) -> Optional[ProductMatch]:
+    """
+    Fallback: zoek product via de OpenFoodFacts API als het niet in de lokale DB zit.
+    """
+    url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+
+    try:
+        print(f"  API lookup voor barcode {barcode}...")
+        response = requests.get(url, headers={"User-Agent": "MealPrepApp/1.0"}, timeout=5)
+        data = response.json()
+
+        if data.get("status") == 1:
+            product = data["product"]
+            nutriments = product.get("nutriments", {})
+
+            print(f"  API match gevonden: {product.get('product_name', 'Onbekend')}")
+
+            return ProductMatch(
+                barcode=barcode,
+                product_name=product.get("product_name"),
+                brands=product.get("brands"),
+                energy_kcal_100g=nutriments.get("energy-kcal_100g"),
+                proteins_100g=nutriments.get("proteins_100g"),
+                carbohydrates_100g=nutriments.get("carbohydrates_100g"),
+                fat_100g=nutriments.get("fat_100g"),
+                sugars_100g=nutriments.get("sugars_100g"),
+                fiber_100g=nutriments.get("fiber_100g"),
+                salt_100g=nutriments.get("salt_100g"),
+                match_score=100.0
+            )
+        else:
+            print(f"  API: barcode {barcode} niet gevonden.")
+            return None
+
+    except Exception as e:
+        print(f"  API error voor {barcode}: {e}")
+        return None
 
 def find_product_by_name(name: str, limit: int = 5, min_score: float = 70.0) -> List[ProductMatch]:
     """

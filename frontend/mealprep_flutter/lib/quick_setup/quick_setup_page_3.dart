@@ -28,7 +28,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Toestemming vereist voor verwerking van activiteitsdata."),
+          content: Text("Please provide GDPR consent to proceed."),
           backgroundColor: Colors.red,
         ),
       );
@@ -46,7 +46,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
       Navigator.pushNamed(context, '/quick_setup_4', arguments: data);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Activiteit opgeslagen! (Klaar voor volgende stap)")),
+        SnackBar(content: Text("Activity saved! (Ready for next step)")),
       );
     } 
   }
@@ -116,11 +116,11 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
                 ),
                 child: CheckboxListTile(
                   title: const Text(
-                    "Ik begrijp dat mijn activiteitsniveau wordt gebruikt om mijn caloriebehoefte te berekenen.",
+                    "I understand that my activity level is used to calculate my calorie needs.",
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   subtitle: const Text(
-                    "Deze gegevens worden verwerkt volgens onze strikte privacyvoorwaarden.",
+                    "These data are processed in accordance with our strict privacy policy.",
                     style: TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                   activeColor: brandGreen,
