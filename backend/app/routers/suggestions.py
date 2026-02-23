@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from app.services.suggestion_service import generate_promotion_suggestions
+from app.auth import get_current_user
 
 router = APIRouter()
 
@@ -9,7 +10,6 @@ router = APIRouter()
 # ── Schemas ──────────────────────────────────────────────────────────────────
 
 class SuggestionRequest(BaseModel):
-    user_id: str
     store_name: str                        # bv. "Colruyt" of "Delhaize"
     scanned_products: List[str]            # bv. ["Kipfilet", "Witte rijst"]
 
@@ -31,22 +31,19 @@ class SuggestionResponse(BaseModel):
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/suggestions/promotions", response_model=SuggestionResponse)
-async def get_promotion_suggestions(request: SuggestionRequest):
-    """
-    Ontvang een lijst gescande producten en geef AI-gegenereerde
-    promotiesuggesties terug op basis van actieve promoties + gebruikersprofiel.
-    """
+async def get_promotion_suggestions(
+    request: SuggestionRequest,
+    user_id: str = Depends(get_current_user), 
+):
     if not request.scanned_products:
         raise HTTPException(status_code=400, detail="Geen producten meegegeven.")
 
     try:
         result = await generate_promotion_suggestions(
             scanned_products=request.scanned_products,
-            user_id=request.user_id,
+            user_id=user_id,
             store_name=request.store_name,
         )
         return result
-
     except Exception as e:
-        print(f"Error in /suggestions/promotions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
