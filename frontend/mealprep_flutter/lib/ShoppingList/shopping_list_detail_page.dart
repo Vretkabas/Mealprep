@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
 import 'package:mealprep_flutter/screens/product_screen.dart';
+import '../services/suggestion_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShoppingListDetailPage extends StatefulWidget {
   final String listId;
@@ -27,6 +29,113 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
     super.initState();
     _loadItems();
   }
+
+Future<void> _showAiSuggestions(BuildContext context) async {
+  final productNames = _items
+      .map((item) => item['product_name'] as String? ?? '')
+      .where((name) => name.isNotEmpty)
+      .toList();
+
+  if (productNames.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Voeg eerst producten toe aan je lijst.')),
+    );
+    return;
+  }
+
+  // Check of sessie actief is
+  final session = Supabase.instance.client.auth.currentSession;
+  if (session == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Niet ingelogd.')),
+    );
+    return;
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (_) => const _SuggestionsLoadingSheet(),
+  );
+
+  try {
+    final result = await SuggestionService.getPromotionSuggestions(
+      storeName: 'Colruyt', // later dynamisch maken
+      scannedProducts: productNames,
+    );
+
+    if (!context.mounted) return;
+    Navigator.pop(context);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _SuggestionsSheet(data: result),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Fout: $e')),
+    );
+  }
+}
+
+Future<void> _editQuantity(String itemId, int currentQuantity) async {
+  final controller =
+      TextEditingController(text: currentQuantity.toString());
+
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Aantal aanpassen'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nieuw aantal',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuleren'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text);
+              if (value != null && value > 0) {
+                Navigator.pop(context, value);
+              }
+            },
+            child: const Text('Opslaan'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (result != null) {
+    try {
+      await ShoppingListService.updateItemQuantity(
+        itemId: itemId,
+        quantity: result,
+      );
+      await _loadItems();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij aanpassen: $e')),
+      );
+    }
+  }
+}
 
   Future<void> _loadItems() async {
     setState(() => _isLoading = true);
@@ -170,7 +279,15 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                                       : null,
                                 ),
                               ),
-                              subtitle: Text('Aantal: ${item['quantity']}'),
+                              subtitle: GestureDetector(
+                              onTap: () => _editQuantity(itemId, item['quantity']),
+                              child: Text(
+                                'Aantal: ${item['quantity']}',
+                                style: const TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
                               // Vierkante selectieknop
                               trailing: GestureDetector(
                                 onTap: () => _toggleSelection(itemId),
@@ -267,10 +384,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
               color: Theme.of(context).scaffoldBackgroundColor,
             ),
             child: OutlinedButton.icon(
-              onPressed: () {
-                // jouw AI suggesties logica
-                //_showAiSuggestions(context);
-              },
+              onPressed: () => _showAiSuggestions(context),
               icon: const Icon(Icons.auto_awesome, size: 18), // sterretje icoon
               label: const Text('Suggesties'),
               style: OutlinedButton.styleFrom(
@@ -301,6 +415,115 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                   child: const Text('Toevoegen'),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionsLoadingSheet extends StatelessWidget {
+  const _SuggestionsLoadingSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 200,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('AI suggesties laden...'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionsSheet extends StatelessWidget {
+  final Map<String, dynamic> data;
+  const _SuggestionsSheet({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestions = data['suggestions'] as List<dynamic>? ?? [];
+    final mealTip = data['meal_tip'] as String? ?? '';
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (_, controller) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '✨ Suggesties voor jou',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (mealTip.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '💡 $mealTip',
+                  style: TextStyle(color: Colors.green.shade800),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.separated(
+                controller: controller,
+                itemCount: suggestions.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (_, index) {
+                  final s = suggestions[index] as Map<String, dynamic>;
+                  return ListTile(
+                    leading: s['is_healthy'] == true
+                        ? const Icon(Icons.favorite, color: Colors.green)
+                        : const Icon(Icons.shopping_bag_outlined),
+                    title: Text(s['product_name'] ?? ''),
+                    subtitle: Text(s['reason'] ?? ''),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (s['discount_label'] != null)
+                          Text(
+                            s['discount_label'],
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        if (s['promo_price'] != null)
+                          Text('€${(s['promo_price'] as num).toStringAsFixed(2)}'),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),

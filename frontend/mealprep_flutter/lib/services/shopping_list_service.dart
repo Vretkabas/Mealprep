@@ -121,5 +121,30 @@ static Future<void> deleteItem({required String itemId}) async {
   );
 }
 
+static Future<void> updateItemQuantity({
+  required String itemId,
+  required int quantity,
+}) async {
+  final response = await http.patch(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+    headers: await _authHeaders(),
+    body: jsonEncode({'quantity': quantity}),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Kon aantal niet aanpassen');
+  }
+}
+
+static Future<void> deleteList({required String listId}) async {
+  final response = await http.delete(
+    Uri.parse('$baseUrl/shopping-lists/$listId'),
+    headers: await _authHeaders(),
+  );
+
+  if (response.statusCode != 204) {
+    throw Exception('Kon lijst niet verwijderen (${response.statusCode})');
+  }
+}
 
 }

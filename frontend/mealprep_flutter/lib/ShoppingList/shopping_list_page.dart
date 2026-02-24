@@ -87,12 +87,50 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
 
                               return ListTile(
                                 title: Text(list['list_name'] ?? ''),
+                                // eerste versie van verwijder knop (ik ga dit later aanpassen)
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: const Text('Lijst verwijderen'),
+                                        content: const Text(
+                                            'Weet je zeker dat je deze lijst wilt verwijderen?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: const Text('Annuleren'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                            ),
+                                            child: const Text('Verwijderen'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      try {
+                                        await ShoppingListService.deleteList(
+                                            listId: list['list_id']);
+                                        _fetchLists();
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Fout bij verwijderen: $e")),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          ShoppingListDetailPage(
+                                      builder: (context) => ShoppingListDetailPage(
                                         listId: list['list_id'],
                                         listName: list['list_name'],
                                       ),
