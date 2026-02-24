@@ -235,17 +235,81 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  // --- ACCOUNT ACTIES ---
+  // account actions
   Future<void> _changePassword() async {
-    try {
-      final email = supabase.auth.currentUser?.email;
-      if (email != null) {
-        await supabase.auth.resetPasswordForEmail(email);
-        if (mounted) _showSuccessDialog("Email Sent", "Check your inbox for the password reset link.");
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: newPassController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "New password",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmPassController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "Confirm password",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (newPassController.text != confirmPassController.text) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Passwords don't match")),
+                );
+                return;
+              }
+              if (newPassController.text.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Password must be at least 6 characters")),
+                );
+                return;
+              }
+              try {
+                await supabase.auth.updateUser(
+                  UserAttributes(password: newPassController.text),
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  _showSuccessDialog("Password Updated", "Your password has been changed successfully.");
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error: $e")),
+                  );
+                }
+              }
+            },
+            child: const Text("Save", style: TextStyle(color: Color(0xFF1B8C61), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    newPassController.dispose();
+    confirmPassController.dispose();
   }
 
   Future<void> _logOut() async {
