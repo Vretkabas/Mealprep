@@ -30,6 +30,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _ageController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
+  final _peopleController = TextEditingController();
   String? _selectedGoal;
   String? _selectedActivity;
   String? _selectedGender;
@@ -94,6 +95,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _peopleController.dispose();
     super.dispose();
   }
 
@@ -144,6 +146,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (data != null) {
         _ageController.text = data['age']?.toString() ?? '0';
+        _peopleController.text = data['persons_count']?.toString() ?? '2';
         _selectedGender = data['gender'];
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight_current']?.toString() ?? '';
@@ -193,6 +196,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
 
       // B. Update user_settings (profiel + body data)
+      final int people = (int.tryParse(_peopleController.text) ?? 2).clamp(1, 30);
       await supabase.from('user_settings').upsert({
         'user_id': user.id,
         'age': int.tryParse(_ageController.text),
@@ -201,6 +205,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'weight_current': double.tryParse(_weightController.text),
         'goal': _selectedGoal,
         'activity_level': _selectedActivity,
+        'persons_count': people,
       }, onConflict: 'user_id');
 
       // C. Update user_settings (Nutrition)
@@ -409,6 +414,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   // --- TAB 1: PROFILE ---
   Widget _buildProfileTab() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Center(
           child: Column(
@@ -495,6 +501,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _calculateDailyCalories();
           }),
         ),
+        _buildLabel( "People to cook for"),
+        _buildTextField(_peopleController, "2", isNumber: true),
       ],
     );
   }
