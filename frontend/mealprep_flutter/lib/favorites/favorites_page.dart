@@ -146,16 +146,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
                               // Product afbeelding
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: imageUrl != null
-                                    ? Image.network(
-                                        imageUrl,
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            _placeholderIcon(),
-                                      )
-                                    : _placeholderIcon(),
+                                child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  color: Colors.white,
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => _placeholderIcon(),
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 12),
 
