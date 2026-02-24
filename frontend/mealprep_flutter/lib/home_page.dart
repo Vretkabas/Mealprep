@@ -50,6 +50,7 @@ class _HomePageState extends State<HomePage> {
       case 3:
         // Favorites pagina
         print("Navigeer naar Favorites");
+        Navigator.pushNamed(context, '/favorites');
         break;
       case 4:
         // Profile pagina
