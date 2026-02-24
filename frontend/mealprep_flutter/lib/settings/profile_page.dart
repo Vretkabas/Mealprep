@@ -27,19 +27,19 @@ class _ProfilePageState extends State<ProfilePage> {
     _getProfile();
   }
 
-Future<void> _getProfile() async {
-  final user = supabase.auth.currentUser;
-  if (user == null) return;
+  Future<void> _getProfile() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
-  setState(() {
-    _email = user.email ?? 'Geen email';
-    _avatarUrl = user.userMetadata?['avatar_url'];
-    _displayName = user.userMetadata?['username'] ??
-                   user.email?.split('@')[0] ??
-                   'User';
-    _isLoading = false;
-  });
-}
+    setState(() {
+      _email = user.email ?? 'Geen email';
+      _avatarUrl = user.userMetadata?['avatar_url'];
+      _displayName = user.userMetadata?['username'] ??
+                     user.email?.split('@')[0] ??
+                     'User';
+      _isLoading = false;
+    });
+  }
 
   // --- TAAL SELECTIE LOGICA ---
   void _showLanguagePicker() {
@@ -89,14 +89,61 @@ Future<void> _getProfile() async {
         Navigator.pop(context);
         
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Taal gewijzigd naar $language'), duration: const Duration(seconds: 1)),
+          SnackBar(content: Text('Language changed to $language'), duration: const Duration(seconds: 1)),
         );
       },
     );
   }
 
+  // --- PROFIELFOTO OPTIES MENU ---
+  void _showProfilePictureOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_avatarUrl == null)
+                ListTile(
+                  leading: const Icon(Icons.add_a_photo, color: Colors.blueAccent),
+                  title: const Text("Add Profile Picture"),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _uploadProfilePicture();
+                  },
+                ),
+              if (_avatarUrl != null)
+                ListTile(
+                  leading: const Icon(Icons.photo_camera, color: Colors.blueAccent),
+                  title: const Text("Update Profile Picture"),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _uploadProfilePicture();
+                  },
+                ),
+              if (_avatarUrl != null)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text("Delete Profile Picture", style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteProfilePicture();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- PROFIELFOTO UPLOADEN ---
   Future<void> _uploadProfilePicture() async {
-    //TODO: profile picture doesnt work
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
@@ -121,13 +168,52 @@ Future<void> _getProfile() async {
         UserAttributes(data: {'avatar_url': publicUrl}),
       );
 
+      // Met een unieke timestamp forceren we de UI om de nieuwe foto in te laden als de URL hetzelfde blijft
       setState(() {
-        _avatarUrl = publicUrl;
+        _avatarUrl = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
       });
+      
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload mislukt: $e')),
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- PROFIELFOTO VERWIJDEREN ---
+  Future<void> _deleteProfilePicture() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final String path = '/${user.id}/profile.jpg';
+
+      // Verwijder de foto uit Supabase Storage
+      await supabase.storage.from('avatars').remove([path]);
+
+      // Update auth metadata zodat avatar_url weer leeg is
+      await supabase.auth.updateUser(
+        UserAttributes(data: {'avatar_url': null}),
+      );
+
+      setState(() {
+        _avatarUrl = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture successfully deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting profile picture: $e')),
         );
       }
     } finally {
@@ -145,7 +231,7 @@ Future<void> _getProfile() async {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fout bij uitloggen: $e')),
+          SnackBar(content: Text('Error signing out: $e')),
         );
       }
     } finally {
@@ -153,21 +239,18 @@ Future<void> _getProfile() async {
     }
   }
 
-  // navigate to profile settings page with initial index 0 (account tab) index is handled in edit_profile_page.dart
   void _navigateToProfileSettings() {
     Navigator.push(context, MaterialPageRoute(
     builder: (_) => const EditProfilePage(initialIndex: 0),
     ));
   }
 
-  // navigate to diet preferences page with initial index 1 (diet & allergens tab) index is handled in edit_profile_page.dart
   void _navigateToDietPreferences() {
     Navigator.push(context, MaterialPageRoute(
     builder: (_) => const EditProfilePage(initialIndex: 1),
     ));
   }
 
-  // same as above but with initial index 2 (other settings like delete, notifications, ..)
   void _navigateToOtherTab() {
     Navigator.push(context, MaterialPageRoute(
     builder: (_) => const EditProfilePage(initialIndex: 2),
@@ -192,7 +275,8 @@ Future<void> _getProfile() async {
                 children: [
                   const SizedBox(height: 20),
                   GestureDetector(
-                    onTap: _uploadProfilePicture,
+                    // GEWIJZIGD: Roept nu het keuzemenu aan in plaats van direct uploaden
+                    onTap: _showProfilePictureOptions,
                     child: Stack(
                       children: [
                         Container(
@@ -240,11 +324,10 @@ Future<void> _getProfile() async {
                   _buildSectionTitle("App Settings"),
                   _buildListTile(Icons.notifications, "Notifications", hasArrow: true , onTap: _navigateToOtherTab),
                   
-                  // GEWIJZIGD: Language klikbaar gemaakt met subtitel voor huidige taal
                   _buildListTile(
                     Icons.language, 
                     "Language", 
-                    subtitle: _currentLanguage, // Toon geselecteerde taal
+                    subtitle: _currentLanguage,
                     hasArrow: true, 
                     onTap: _showLanguagePicker
                   ),

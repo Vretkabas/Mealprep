@@ -58,7 +58,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
     // Check of er iets gekozen is (minstens 1 allergie of 'None')
     if (_selectedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Selecteer aub je allergieën of kies 'None'.")),
+        const SnackBar(content: Text("Select at least one allergy or preference, or choose 'None'."), backgroundColor: Colors.redAccent),
       );
       return;
     }
@@ -109,10 +109,10 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Fout bij opslaan van je gegevens. Probeer opnieuw."),
+          content: const Text("Error saving your preferences. Please try again."),
           backgroundColor: Colors.redAccent,
           action: SnackBarAction(
-            label: "Opnieuw",
+            label: "Retry",
             textColor: Colors.white,
             onPressed: _finishSetup,
           ),
@@ -180,7 +180,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
                 ),
                 child: CheckboxListTile(
                   title: const Text(
-                    "Ik geef toestemming voor het verwerken van deze gegevens.",
+                    "I consent to the processing of my data.",
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                   activeColor: brandGreen,
