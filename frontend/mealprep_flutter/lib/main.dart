@@ -17,6 +17,7 @@ import 'quick_setup/quick_setup_page_2.dart';
 import 'quick_setup/quick_setup_page_3.dart';
 import 'quick_setup/quick_setup_page_4.dart';
 import 'store_selection_page.dart';
+import 'favorites/favorites_page.dart';
 
 // ===============================
 // Setup Dio
@@ -103,6 +104,7 @@ class MyApp extends StatelessWidget {
         '/quick_setup_3': (_) => const QuickSetupPage3(),
         '/quick_setup_4': (_) => const QuickSetupPage4(),
         '/store_selection': (_) => const StoreSelectionPage(),
+        '/favorites': (_) => const FavoritesPage(),
       },
     );
   }

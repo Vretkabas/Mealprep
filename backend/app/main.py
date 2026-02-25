@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.barcode_api import router as barcode_router
 from .routers import suggestions
 from app.routers import shopping_lists
-
+from app.routers import favorites_router
 
 app = FastAPI(title="MealPrep API")
 
@@ -20,6 +20,7 @@ app.include_router(shopping_lists.router)
 app.include_router(barcode_api.router)
 app.include_router(user.router)
 app.include_router(suggestions.router)
+app.include_router(favorites_router.router)
 
 # get database url
 DATABASE_URL = os.getenv("DATABASE_URL")
