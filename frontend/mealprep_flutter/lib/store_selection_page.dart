@@ -47,6 +47,7 @@ class _StoreSelectionPageState extends State<StoreSelectionPage> {
       {'name': 'Albert Heijn', 'logo': 'assets/images/ah_logo.jpg'},
       {'name': 'Jumbo', 'logo': 'assets/images/jumbo_logo.png'},
       {'name': 'Lidl', 'logo': 'assets/images/lidl_logo.png'},
+      {'name': 'Colruyt', 'logo': 'assets/images/colruyt_logo.svg'}, 
     ];
 
     return Scaffold(
