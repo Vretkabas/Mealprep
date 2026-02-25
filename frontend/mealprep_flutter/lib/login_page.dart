@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isForgotHovered = false;
 
   // Foutmelding tonen
   void _showError(String message) {
@@ -270,14 +271,24 @@ class _LoginPageState extends State<LoginPage> {
                     }),
                     // Forgot password link
                     const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _forgotPassword,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Text(
-                          "Forgot your password?",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[700]),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      onEnter: (_) => setState(() => _isForgotHovered = true),
+                      onExit: (_) => setState(() => _isForgotHovered = false),
+                      child: GestureDetector(
+                        onTap: _forgotPassword,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            "Forgot your password?",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              decoration: _isForgotHovered
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
+                            ),
+                          ),
                         ),
                       ),
                     ),
