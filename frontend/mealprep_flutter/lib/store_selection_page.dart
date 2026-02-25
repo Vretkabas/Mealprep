@@ -68,6 +68,10 @@ class _StoreSelectionPageState extends State<StoreSelectionPage> {
           itemBuilder: (context, index) {
             final store = stores[index];
             final String logoPath = store['logo']!;
+            
+            // Check of het de Colruyt is
+            final bool isColruyt = store['name'] == 'Colruyt';
+
             return GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -86,9 +90,13 @@ class _StoreSelectionPageState extends State<StoreSelectionPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: logoPath.endsWith('.svg')
-                            ? SvgPicture.asset(logoPath, fit: BoxFit.contain)
-                            : Image.asset(logoPath, fit: BoxFit.contain),
+                        child: Transform.scale(
+                          // Vergroot enkel het Colruyt logo (bijv. met 60%), de rest blijft 1.0
+                          scale: isColruyt ? 1.6 : 1.0,
+                          child: logoPath.endsWith('.svg')
+                              ? SvgPicture.asset(logoPath, fit: BoxFit.contain)
+                              : Image.asset(logoPath, fit: BoxFit.contain),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(store['name']!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
