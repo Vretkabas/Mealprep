@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../ShoppingList/shopping_list_page.dart';
-import '../screens/barcode_scanner_screen.dart'; // Zorg dat dit pad klopt
+import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'ShoppingList/shopping_list_page.dart';
+import 'screens/barcode_scanner_screen.dart';
 
 class ProductCatalogPage extends StatefulWidget {
   final String storeName;
-
   const ProductCatalogPage({super.key, required this.storeName});
 
   @override
@@ -13,213 +14,209 @@ class ProductCatalogPage extends StatefulWidget {
 }
 
 class _ProductCatalogPageState extends State<ProductCatalogPage> {
-  // --- STATE VARIABELEN ---
-  List<dynamic> products = [];
+  // --- STATE ---
+  List<dynamic> _promotions = [];
+  List<dynamic> _searchResults = [];
   bool _isLoading = true;
-  int cartItemCount = 0;
-  int _selectedIndex = 0; // Voor de Navbar
+  bool _isSearching = false;
+  bool _showPromoOnly = true; // standaard promoties tonen
+  int _selectedIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
 
-  // --- STYLING (Hetzelfde als HomePage) ---
+  // --- STYLING ---
   final Color brandGreen = const Color(0xFF00BFA5);
   final Color textDark = const Color(0xFF345069);
+  final Color backgroundGrey = const Color(0xFFF5F7F9);
+
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8081';
+    return 'http://localhost:8081';
+  }
 
   @override
   void initState() {
     super.initState();
-    _fetchProducts();
+    _fetchPromotions();
   }
 
-  // --- LOGICA ---
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
-  Future<void> _fetchProducts() async {
+  // --- PROMOTIES OPHALEN ---
+  Future<void> _fetchPromotions() async {
+    setState(() => _isLoading = true);
     try {
       final response = await Dio().get(
-        'https://jouw-api.com/products', // Vervang door je echte URL
-        queryParameters: {'store': widget.storeName},
+        '$_baseUrl/products/promotions',
+        queryParameters: {'store_name': widget.storeName},
       );
       setState(() {
-        products = response.data;
+        _promotions = response.data['promotions'] ?? [];
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      print("Fout bij ophalen producten: $e");
+      print("Fout bij ophalen promoties: $e");
     }
   }
 
-  Future<void> _addToShoppingList(String productId) async {
-    try {
-      String activeListId = "jouw-actieve-lijst-uuid";
-      String userId = "jouw-user-uuid";
-
-      await Dio().post('https://jouw-api.com/shopping-list/add', data: {
-        'user_id': userId,
-        'list_id': activeListId,
-        'product_id': productId,
-        'quantity': 1,
-      });
-
+  // --- ZOEKEN IN ALLE PRODUCTEN ---
+  Future<void> _searchProducts(String query) async {
+    if (query.isEmpty) {
       setState(() {
-        cartItemCount++;
+        _searchResults = [];
+        _showPromoOnly = true;
       });
+      return;
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Toegevoegd aan shopping list!")),
+    setState(() => _isSearching = true);
+    try {
+      final response = await Dio().get(
+        '$_baseUrl/products/search',
+        queryParameters: {
+          'q': query,
+          'store_name': widget.storeName,
+        },
       );
+      setState(() {
+        _searchResults = response.data['products'] ?? [];
+        _showPromoOnly = false;
+        _isSearching = false;
+      });
     } catch (e) {
-      print("Fout bij toevoegen: $e");
+      setState(() => _isSearching = false);
+      print("Zoekfout: $e");
     }
   }
 
-  // --- NAVBAR LOGICA ---
+  // --- NAVBAR ---
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
+    setState(() => _selectedIndex = index);
     switch (index) {
-      case 0:
-        Navigator.pushNamed(context, '/home');
-        break;
-      case 1:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
-        );
-        break;
-      case 2:
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ShoppingListsPage()),
-        );
-        break;
-      case 3:
-        print("Navigeer naar Favorites");
-        break;
-      case 4:
-        Navigator.pushNamed(context, '/profile');
-        break;
+      case 0: Navigator.pushNamed(context, '/home'); break;
+      case 1: Navigator.push(context, MaterialPageRoute(builder: (_) => const BarcodeScannerScreen())); break;
+      case 2: Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListsPage())); break;
+      case 3: break;
+      case 4: Navigator.pushNamed(context, '/profile'); break;
     }
   }
 
+  // --- BUILD ---
   @override
   Widget build(BuildContext context) {
+    final List<dynamic> displayList = _showPromoOnly ? _promotions : _searchResults;
+
     return Scaffold(
+      backgroundColor: backgroundGrey,
       appBar: AppBar(
         title: Text(widget.storeName, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        actions: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.black, size: 28),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ShoppingListsPage()),
-                  );
-                },
-              ),
-              if (cartItemCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '$cartItemCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 8),
-        ],
+        backgroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.65,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
+      body: Column(
+        children: [
+          // --- ZOEKBALK ---
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) => _searchProducts(val),
+              decoration: InputDecoration(
+                hintText: "Zoek producten bij ${widget.storeName}...",
+                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchProducts('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF5F7F9),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  double price = product['price'] != null ? double.parse(product['price'].toString()) : 0.0;
-
-                  return Card(
-                    color: Colors.white,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Center(
-                            child: product['image_url'] != null
-                                ? Image.network(product['image_url'], fit: BoxFit.contain)
-                                : const Icon(Icons.image, size: 50, color: Colors.grey),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product['product_name'] ?? 'Onbekend',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                product['content'] ?? '',
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    "€${price.toStringAsFixed(2)}",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: IconButton(
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.all(6),
-                                      icon: const Icon(Icons.shopping_cart, color: Colors.white, size: 20),
-                                      onPressed: () => _addToShoppingList(product['product_id']),
-                                    ),
-                                  )
-                                ],
-                              )
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  );
-                },
               ),
             ),
-      // --- DE NAVBAR  ---
+          ),
+
+          // --- HEADER LABEL ---
+          if (!_isSearching)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  Icon(
+                    _showPromoOnly ? Icons.local_offer : Icons.search,
+                    size: 16,
+                    color: brandGreen,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _showPromoOnly
+                        ? "${_promotions.length} promoties deze week"
+                        : "${_searchResults.length} resultaten gevonden",
+                    style: TextStyle(
+                      color: textDark,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // --- CONTENT ---
+          Expanded(
+            child: _isLoading || _isSearching
+                ? Center(child: CircularProgressIndicator(color: brandGreen))
+                : displayList.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off, size: 60, color: Colors.grey[300]),
+                            const SizedBox(height: 12),
+                            Text(
+                              _showPromoOnly
+                                  ? "Geen promoties gevonden voor ${widget.storeName}"
+                                  : "Geen producten gevonden",
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                          ],
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.68,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        itemCount: displayList.length,
+                        itemBuilder: (context, index) {
+                          final item = displayList[index];
+                          return _showPromoOnly
+                              ? _buildPromoCard(item)
+                              : _buildProductCard(item);
+                        },
+                      ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -234,6 +231,173 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
           BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
+        ],
+      ),
+    );
+  }
+
+  // --- PROMOTIE KAART ---
+  Widget _buildPromoCard(Map<String, dynamic> promo) {
+    final String name = promo['product_name'] ?? 'Onbekend';
+    final String? discount = promo['discount_percentage']; // is discount_label tekst
+    final double? promoPrice = promo['promo_price'] != null
+        ? double.tryParse(promo['promo_price'].toString())
+        : null;
+    final double? originalPrice = promo['original_price'] != null
+        ? double.tryParse(promo['original_price'].toString())
+        : null;
+    final String? imageUrl = promo['image_url'];
+    final bool isHealthy = promo['is_healthy'] ?? false;
+
+    return Card(
+      color: Colors.white,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Afbeelding + discount badge
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                child: SizedBox(
+                  height: 110,
+                  width: double.infinity,
+                  child: imageUrl != null
+                      ? Image.network(imageUrl, fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 40, color: Colors.grey))
+                      : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+                ),
+              ),
+              // Discount badge
+              if (discount != null && discount.isNotEmpty)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      discount,
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              // Gezond badge
+              if (isHealthy)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: brandGreen,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.eco, color: Colors.white, size: 12),
+                  ),
+                ),
+            ],
+          ),
+          // Info
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    if (promoPrice != null)
+                      Text(
+                        "€${promoPrice.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: brandGreen,
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    if (originalPrice != null)
+                      Text(
+                        "€${originalPrice.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- PRODUCT KAART (zoekresultaten) ---
+  Widget _buildProductCard(Map<String, dynamic> product) {
+    final String name = product['product_name'] ?? 'Onbekend';
+    final String? imageUrl = product['image_url'];
+    final double? price = product['price'] != null
+        ? double.tryParse(product['price'].toString())
+        : null;
+    final String? content = product['content'];
+
+    return Card(
+      color: Colors.white,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            child: SizedBox(
+              height: 110,
+              width: double.infinity,
+              child: imageUrl != null
+                  ? Image.network(imageUrl, fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 40, color: Colors.grey))
+                  : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (content != null) ...[
+                  const SizedBox(height: 2),
+                  Text(content, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                ],
+                const SizedBox(height: 6),
+                if (price != null)
+                  Text(
+                    "€${price.toStringAsFixed(2)}",
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );
