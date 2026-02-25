@@ -7,6 +7,10 @@ from .routers import shopping_lists # import shopping lists router
 from .routers import barcode_api # import barcode API router
 from .routers import suggestions # import suggestions router
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers.barcode_api import router as barcode_router
+from .routers import suggestions
+from app.routers import shopping_lists
+
 
 app = FastAPI(title="MealPrep API")
 
