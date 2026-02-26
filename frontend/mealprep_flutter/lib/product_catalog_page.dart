@@ -21,6 +21,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   bool _isSearching = false;
   bool _showPromoOnly = true; // standaard promoties tonen
   int _selectedIndex = 0;
+  int _promoDisplayLimit = 25;
   final TextEditingController _searchController = TextEditingController();
 
   // --- STYLING ---
@@ -56,6 +57,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
       );
       setState(() {
         _promotions = response.data['promotions'] ?? [];
+        _promoDisplayLimit = 25;
         _isLoading = false;
       });
     } catch (e) {
@@ -109,7 +111,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   // --- BUILD ---
   @override
   Widget build(BuildContext context) {
-    final List<dynamic> displayList = _showPromoOnly ? _promotions : _searchResults;
+    final List<dynamic> fullList = _showPromoOnly ? _promotions : _searchResults;
+    final List<dynamic> displayList = _showPromoOnly
+        ? fullList.take(_promoDisplayLimit).toList()
+        : fullList;
 
     return Scaffold(
       backgroundColor: backgroundGrey,
@@ -182,7 +187,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
           Expanded(
             child: _isLoading || _isSearching
                 ? Center(child: CircularProgressIndicator(color: brandGreen))
-                : displayList.isEmpty
+                : fullList.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -198,21 +203,50 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                           ],
                         ),
                       )
-                    : GridView.builder(
-                        padding: const EdgeInsets.all(12),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.68,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                        ),
-                        itemCount: displayList.length,
-                        itemBuilder: (context, index) {
-                          final item = displayList[index];
-                          return _showPromoOnly
-                              ? _buildPromoCard(item)
-                              : _buildProductCard(item);
-                        },
+                    : CustomScrollView(
+                        slivers: [
+                          SliverPadding(
+                            padding: const EdgeInsets.all(12),
+                            sliver: SliverGrid(
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.68,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final item = displayList[index];
+                                  return _showPromoOnly
+                                      ? _buildPromoCard(item)
+                                      : _buildProductCard(item);
+                                },
+                                childCount: displayList.length,
+                              ),
+                            ),
+                          ),
+                          if (_showPromoOnly && _promoDisplayLimit < _promotions.length)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                                child: OutlinedButton(
+                                  onPressed: () => setState(() => _promoDisplayLimit += 25),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: brandGreen,
+                                    side: BorderSide(color: brandGreen),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  child: Text(
+                                    "Meer laden (${_promotions.length - _promoDisplayLimit} resterend)",
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
           ),
         ],
