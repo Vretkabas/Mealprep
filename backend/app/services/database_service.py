@@ -197,9 +197,10 @@ class DatabaseService:
             if store_id:
                 rows = await conn.fetch(
                     """
-                    SELECT p.*, s.store_name
+                    SELECT p.*, s.store_name, pr.image_url
                     FROM promotions p
                     JOIN stores s ON p.store_id = s.store_id
+                    LEFT JOIN products pr ON p.product_id = pr.product_id
                     WHERE p.store_id = $1 AND p.is_active = true
                     ORDER BY p.valid_until
                     """,
@@ -208,9 +209,10 @@ class DatabaseService:
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT p.*, s.store_name
+                    SELECT p.*, s.store_name, pr.image_url
                     FROM promotions p
                     JOIN stores s ON p.store_id = s.store_id
+                    LEFT JOIN products pr ON p.product_id = pr.product_id
                     WHERE p.is_active = true
                     ORDER BY p.valid_until
                     """

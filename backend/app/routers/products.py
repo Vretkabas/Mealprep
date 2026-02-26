@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import uuid
+import requests as http_requests
 from app.services.product_service import find_product_by_name, find_product_by_barcode, get_db_stats
 from app.services.database_service import get_database_service
 from app.services.gemini_service import enrich_products_batched
@@ -617,3 +619,21 @@ async def get_promotions(store_name: Optional[str] = None):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/proxy/image")
+def proxy_image(url: str):
+    """Proxy product images to avoid CORS issues with static.colruytgroup.com."""
+    if "static.colruytgroup.com" not in url:
+        raise HTTPException(status_code=400, detail="Only Colruyt images are allowed")
+    try:
+        resp = http_requests.get(
+            url,
+            headers={"Referer": "https://www.colruyt.be/"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        content_type = resp.headers.get("content-type", "image/jpeg")
+        return Response(content=resp.content, media_type=content_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")

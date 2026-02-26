@@ -246,7 +246,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
     final double? originalPrice = promo['original_price'] != null
         ? double.tryParse(promo['original_price'].toString())
         : null;
-    final String? imageUrl = promo['image_url'];
+    final String? rawImageUrl = promo['image_url'];
+    final String? imageUrl = rawImageUrl != null
+        ? '$_baseUrl/proxy/image?url=${Uri.encodeQueryComponent(rawImageUrl)}'
+        : null;
     final bool isHealthy = promo['is_healthy'] ?? false;
 
     return Card(
@@ -265,8 +268,12 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                   height: 110,
                   width: double.infinity,
                   child: imageUrl != null
-                      ? Image.network(imageUrl, fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 40, color: Colors.grey))
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) =>
+                              const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+                        )
                       : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
                 ),
               ),
