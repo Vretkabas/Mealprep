@@ -11,6 +11,13 @@ from app.routers import favorites_router
 
 app = FastAPI(title="MealPrep API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # voor development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # include products router
 app.include_router(products.router)
 app.include_router(shopping_lists.router)
