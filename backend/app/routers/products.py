@@ -385,8 +385,10 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
         # ====================================================
         # Always send the best available name (scraped from Colruyt page)
         product_names = [matched_data[url]["product_name"] for url in url_list]
+        product_discounts = [products_by_url[url]["discount"] for url in url_list]
+        product_prices = [products_by_url[url].get("price") for url in url_list]
         print(f"\nSending {len(product_names)} products to Gemini for enrichment...")
-        enrichments = await enrich_products_batched(product_names)
+        enrichments = await enrich_products_batched(product_names, product_discounts, product_prices)
         print(f"Gemini enrichment complete: {len(enrichments)} results")
 
         # Map enrichments back to URLs
@@ -412,13 +414,21 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                 enrichment = enrichment_by_url[url]
 
                 discount = product_info["discount"]
-                discount_pct = parse_discount_percentage(discount)
-
-                # Calculate prices
                 original_price = product_info.get("price")
-                promo_price = None
-                if original_price and discount_pct:
-                    promo_price = round(original_price * (1 - discount_pct / 100), 2)
+
+                # Promo price: prefer Gemini's calculation (handles complex deals like 2+1 GRATIS)
+                # Fall back to simple percentage math if Gemini returned null
+                gemini_promo_price = enrichment.get("promo_price")
+                if gemini_promo_price is not None:
+                    try:
+                        promo_price = round(float(gemini_promo_price), 2)
+                    except (ValueError, TypeError):
+                        promo_price = None
+                else:
+                    discount_pct = parse_discount_percentage(discount)
+                    promo_price = None
+                    if original_price and discount_pct:
+                        promo_price = round(original_price * (1 - discount_pct / 100), 2)
 
                 # Gemini enrichment data
                 category = enrichment.get("category", "Overig")
