@@ -391,7 +391,10 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   // --- PRODUCT KAART (zoekresultaten) ---
   Widget _buildProductCard(Map<String, dynamic> product) {
     final String name = product['product_name'] ?? 'Onbekend';
-    final String? imageUrl = product['image_url'];
+    final String? rawImageUrl = product['image_url'];
+    final String? imageUrl = rawImageUrl != null
+        ? '$_baseUrl/proxy/image?url=${Uri.encodeQueryComponent(rawImageUrl)}'
+        : null;
     final double? price = product['price'] != null
         ? double.tryParse(product['price'].toString())
         : null;

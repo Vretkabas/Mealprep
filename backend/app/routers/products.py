@@ -673,17 +673,23 @@ async def get_promotions(store_name: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+ALLOWED_IMAGE_DOMAINS = [
+    "static.colruytgroup.com",
+    "images.openfoodfacts.org",
+    "world.openfoodfacts.org",
+    "static.openfoodfacts.org",
+]
+
 @router.get("/proxy/image")
 def proxy_image(url: str):
-    """Proxy product images to avoid CORS issues with static.colruytgroup.com."""
-    if "static.colruytgroup.com" not in url:
-        raise HTTPException(status_code=400, detail="Only Colruyt images are allowed")
+    """Proxy product images to avoid CORS issues with external image hosts."""
+    if not any(domain in url for domain in ALLOWED_IMAGE_DOMAINS):
+        raise HTTPException(status_code=400, detail="Image domain not allowed")
     try:
-        resp = http_requests.get(
-            url,
-            headers={"Referer": "https://www.colruyt.be/"},
-            timeout=10,
-        )
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if "colruytgroup.com" in url:
+            headers["Referer"] = "https://www.colruyt.be/"
+        resp = http_requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
         content_type = resp.headers.get("content-type", "image/jpeg")
         return Response(content=resp.content, media_type=content_type)
