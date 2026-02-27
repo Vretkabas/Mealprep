@@ -46,6 +46,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   bool _showPromoOnly = true;
   int _selectedIndex = 0;
   int _promoDisplayLimit = 25;
+  int _searchDisplayLimit = 50;
   final TextEditingController _searchController = TextEditingController();
 
   // --- FILTER STATE ---
@@ -196,6 +197,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
       setState(() {
         _searchResults = response.data['products'] ?? [];
         _showPromoOnly = false;
+        _searchDisplayLimit = 50;
         _isSearching = false;
       });
     } catch (e) {
@@ -383,7 +385,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredList;
-    final displayList = _showPromoOnly ? filtered.take(_promoDisplayLimit).toList() : filtered;
+    final displayList = _showPromoOnly
+        ? filtered.take(_promoDisplayLimit).toList()
+        : filtered.take(_searchDisplayLimit).toList();
 
     return Scaffold(
       backgroundColor: backgroundGrey,
@@ -603,6 +607,27 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                                   ),
                                   child: Text(
                                     "Meer laden (${filtered.length - _promoDisplayLimit} resterend)",
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (!_showPromoOnly && _searchDisplayLimit < filtered.length)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                                child: OutlinedButton(
+                                  onPressed: () =>
+                                      setState(() => _searchDisplayLimit += 50),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: brandGreen,
+                                    side: BorderSide(color: brandGreen),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  child: Text(
+                                    "Meer laden (${filtered.length - _searchDisplayLimit} resterend)",
                                     style: const TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                 ),

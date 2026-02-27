@@ -622,7 +622,7 @@ async def search_products(q: str, store_name: Optional[str] = None):
                       AND p.colruyt_category <> 'Niet-voeding'
                       AND p.price <> 0.00
                     ORDER BY p.product_name
-                    LIMIT 50
+                    LIMIT 500
                     """,
                     f"%{q}%"
                 )
@@ -634,9 +634,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                     FROM products
                     WHERE LOWER(product_name) LIKE LOWER($1)
                         AND colruyt_category NOT LIKE 'Niet-voeding'
-                        AND p.price <> 0.00
                     ORDER BY product_name
-                    LIMIT 50
+                    LIMIT 500
                     """,
                     f"%{q}%"
                 )
