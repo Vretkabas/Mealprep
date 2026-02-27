@@ -379,10 +379,14 @@ def run(playwright: Playwright):
 
                     info_soup = BeautifulSoup(page_obj.content(), "html.parser")
 
+                    def normalize_barcode(raw: str) -> str:
+                        """Strip leading zeros to match how barcodes are stored in the products table."""
+                        return raw.lstrip('0') if raw else raw
+
                     # Method 1: Find ALL elements with data-gtin attribute
                     gtin_elements = info_soup.find_all(attrs={"data-gtin": True})
                     for elem in gtin_elements:
-                        gtin = elem.get("data-gtin")
+                        gtin = normalize_barcode(elem.get("data-gtin"))
                         if gtin and gtin not in barcodes:
                             barcodes.append(gtin)
 
@@ -392,7 +396,7 @@ def run(playwright: Playwright):
                         parent = barcode_list.find_parent()
                         if parent:
                             for span in parent.find_all("span", attrs={"data-gtin": True}):
-                                gtin = span.get("data-gtin")
+                                gtin = normalize_barcode(span.get("data-gtin"))
                                 if gtin and gtin not in barcodes:
                                     barcodes.append(gtin)
 
@@ -400,7 +404,7 @@ def run(playwright: Playwright):
                     if not barcodes:
                         gtin_span = info_soup.find("span", id="current_gtin")
                         if gtin_span:
-                            gtin_text = gtin_span.get_text(strip=True)
+                            gtin_text = normalize_barcode(gtin_span.get_text(strip=True))
                             if gtin_text and gtin_text not in barcodes:
                                 barcodes.append(gtin_text)
 
@@ -411,8 +415,9 @@ def run(playwright: Playwright):
                             text = elem.get_text(strip=True)
                             # Check if it's a 13-14 digit barcode
                             if re.match(r'^\d{12,14}$', text):
-                                if text not in barcodes:
-                                    barcodes.append(text)
+                                normalized = normalize_barcode(text)
+                                if normalized not in barcodes:
+                                    barcodes.append(normalized)
 
                     # Method 5: Search page text for barcode patterns
                     if not barcodes:
@@ -420,8 +425,9 @@ def run(playwright: Playwright):
                         # Find all 13-digit numbers (EAN-13 format)
                         ean_matches = re.findall(r'\b(\d{13})\b', page_text)
                         for ean in ean_matches:
-                            if ean not in barcodes:
-                                barcodes.append(ean)
+                            normalized = normalize_barcode(ean)
+                            if normalized not in barcodes:
+                                barcodes.append(normalized)
 
                 except Exception as e:
                     print(f"[red]Error fetching barcode: {e}[/red]")

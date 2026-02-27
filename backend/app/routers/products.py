@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import uuid
+import requests as http_requests
 from app.services.product_service import find_product_by_name, find_product_by_barcode, get_db_stats
 from app.services.database_service import get_database_service
 from app.services.gemini_service import enrich_products_batched
@@ -11,6 +13,41 @@ router = APIRouter()
 
 
 # ==================== HELPER FUNCTIONS ====================
+
+def parse_deal_info(discount: str) -> tuple:
+    """
+    Fallback: parse discount string to (is_meerdere_artikels, deal_quantity).
+    Used when Gemini doesn't return these fields.
+      "N+M GRATIS"          -> (True,  N+M)   bv. "6+6 GRATIS" -> (True, 12)
+      "2de/2e GRATIS"       -> (True,  2)
+      "2de aan -X%"         -> (True,  2)
+      "2de aan halve prijs" -> (True,  2)
+      "-20%", "30% KORTING" -> (False, 1)
+    """
+    import re
+    try:
+        d = discount.strip().upper()
+
+        match_nm = re.search(r'(\d+)\+(\d+)\s*GRATIS', d)
+        if match_nm:
+            n, m = int(match_nm.group(1)), int(match_nm.group(2))
+            return True, n + m
+
+        if re.search(r'2(?:DE|E)\s+GRATIS', d):
+            return True, 2
+
+        if re.search(r'2(?:DE|E)\s+AAN\s+', d):
+            return True, 2
+
+        # "-40% VANAF 6 ST" / "40% VANAF 6 ST"
+        match_vanaf = re.search(r'VANAF\s+(\d+)\s*ST', d)
+        if match_vanaf:
+            return True, int(match_vanaf.group(1))
+
+        return False, 1
+    except Exception:
+        return False, 1
+
 
 def parse_discount_percentage(discount: str) -> Optional[float]:
     """
@@ -52,10 +89,10 @@ def parse_discount_percentage(discount: str) -> Optional[float]:
             # You buy N+M but only pay for N → discount = M/(N+M) * 100
             return round(m / (n + m) * 100, 2)
 
-        # Handle simple percentage format: "-50%", "50%", "-25%"
-        if "%" in discount:
-            num = discount.replace("%", "").replace("-", "").strip()
-            return float(num)
+        # Handle simple percentage format: "-50%", "50%", "-25%", "-40% VANAF 6 ST"
+        match_pct = re.search(r'(\d+(?:[.,]\d+)?)\s*%', discount)
+        if match_pct:
+            return float(match_pct.group(1).replace(",", "."))
 
         return None
     except:
@@ -385,8 +422,10 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
         # ====================================================
         # Always send the best available name (scraped from Colruyt page)
         product_names = [matched_data[url]["product_name"] for url in url_list]
+        product_discounts = [products_by_url[url]["discount"] for url in url_list]
+        product_prices = [products_by_url[url].get("price") for url in url_list]
         print(f"\nSending {len(product_names)} products to Gemini for enrichment...")
-        enrichments = await enrich_products_batched(product_names)
+        enrichments = await enrich_products_batched(product_names, product_discounts, product_prices)
         print(f"Gemini enrichment complete: {len(enrichments)} results")
 
         # Map enrichments back to URLs
@@ -412,13 +451,30 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                 enrichment = enrichment_by_url[url]
 
                 discount = product_info["discount"]
-                discount_pct = parse_discount_percentage(discount)
-
-                # Calculate prices
                 original_price = product_info.get("price")
-                promo_price = None
-                if original_price and discount_pct:
-                    promo_price = round(original_price * (1 - discount_pct / 100), 2)
+
+                # Promo price: prefer Gemini's calculation (handles complex deals like 2+1 GRATIS)
+                # Fall back to simple percentage math if Gemini returned null
+                gemini_promo_price = enrichment.get("promo_price")
+                if gemini_promo_price is not None:
+                    try:
+                        promo_price = round(float(gemini_promo_price), 2)
+                    except (ValueError, TypeError):
+                        promo_price = None
+                else:
+                    discount_pct = parse_discount_percentage(discount)
+                    promo_price = None
+                    if original_price and discount_pct:
+                        promo_price = round(original_price * (1 - discount_pct / 100), 2)
+
+                # Multi-artikel info: prefer Gemini, fallback to regex parser
+                gemini_meerdere = enrichment.get("is_meerdere_artikels")
+                gemini_deal_qty = enrichment.get("deal_quantity")
+                if gemini_meerdere is not None and gemini_deal_qty is not None:
+                    is_meerdere_artikels = bool(gemini_meerdere)
+                    deal_quantity = int(gemini_deal_qty)
+                else:
+                    is_meerdere_artikels, deal_quantity = parse_deal_info(discount)
 
                 # Gemini enrichment data
                 category = enrichment.get("category", "Overig")
@@ -459,6 +515,8 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         category=category,
                         primary_macro=primary_macro,
                         is_healthy=is_healthy,
+                        is_meerdere_artikels=is_meerdere_artikels,
+                        deal_quantity=deal_quantity,
                     )
 
                     processed = ProcessedColruytProduct(
@@ -499,6 +557,8 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         category=category,
                         primary_macro=primary_macro,
                         is_healthy=is_healthy,
+                        is_meerdere_artikels=is_meerdere_artikels,
+                        deal_quantity=deal_quantity,
                     )
 
                     processed = ProcessedColruytProduct(
@@ -559,8 +619,10 @@ async def search_products(q: str, store_name: Optional[str] = None):
                            p.image_url, p.price, p.content, p.colruyt_category
                     FROM products p
                     WHERE LOWER(p.product_name) LIKE LOWER($1)
+                      AND p.colruyt_category <> 'Niet-voeding'
+                      AND p.price <> 0.00
                     ORDER BY p.product_name
-                    LIMIT 50
+                    LIMIT 500
                     """,
                     f"%{q}%"
                 )
@@ -571,8 +633,9 @@ async def search_products(q: str, store_name: Optional[str] = None):
                            image_url, price, content, colruyt_category
                     FROM products
                     WHERE LOWER(product_name) LIKE LOWER($1)
+                        AND colruyt_category NOT LIKE 'Niet-voeding'
                     ORDER BY product_name
-                    LIMIT 50
+                    LIMIT 500
                     """,
                     f"%{q}%"
                 )
@@ -607,3 +670,27 @@ async def get_promotions(store_name: Optional[str] = None):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+ALLOWED_IMAGE_DOMAINS = [
+    "static.colruytgroup.com",
+    "images.openfoodfacts.org",
+    "world.openfoodfacts.org",
+    "static.openfoodfacts.org",
+]
+
+@router.get("/proxy/image")
+def proxy_image(url: str):
+    """Proxy product images to avoid CORS issues with external image hosts."""
+    if not any(domain in url for domain in ALLOWED_IMAGE_DOMAINS):
+        raise HTTPException(status_code=400, detail="Image domain not allowed")
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if "colruytgroup.com" in url:
+            headers["Referer"] = "https://www.colruyt.be/"
+        resp = http_requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        content_type = resp.headers.get("content-type", "image/jpeg")
+        return Response(content=resp.content, media_type=content_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not fetch image: {e}")
