@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SuggestionService {
-  static const String _baseUrl = 'http://10.0.2.2:8000';
+  static String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    return 'http://10.0.2.2:8000'; // Android emulator
+  }
 
   static Future<Map<String, dynamic>> getPromotionSuggestions({
     required String storeName,

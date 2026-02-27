@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ShoppingList/shopping_list_page.dart';
+import 'ShoppingList/shopping_list_detail_page.dart';
 import 'screens/barcode_scanner_screen.dart';
+import 'services/shopping_list_service.dart';
+import 'services/suggestion_service.dart';
 
 // ── Filter constants ───────────────────────────────────────────────────────────
 
@@ -56,6 +60,11 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   bool _multiItemOnly = false;
   // 'none' | 'price_asc' | 'price_desc' | 'discount_desc' | 'name_asc'
   String _sortOrder = 'none';
+
+  // --- CART SESSION STATE ---
+  int _addedCount = 0;
+  String? _lastListId;
+  String? _lastListName;
 
   // --- STYLING ---
   final Color brandGreen = const Color(0xFF00BFA5);
@@ -380,6 +389,147 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
     );
   }
 
+  // ── Add to shopping list ─────────────────────────────────────────────────────
+
+  void _showAddToListSheet(Map<String, dynamic> product) {
+    final String productId = product['product_id']?.toString() ?? '';
+    if (productId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dit product kan niet worden toegevoegd')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _AddToListSheet(
+        product: product,
+        baseUrl: _baseUrl,
+        brandGreen: brandGreen,
+        storeName: widget.storeName,
+        onAdded: (String listId, String listName) {
+          setState(() {
+            _addedCount++;
+            _lastListId = listId;
+            _lastListName = listName;
+          });
+          _showSuggestionsPrompt(listId, listName);
+        },
+      ),
+    );
+  }
+
+  void _showSuggestionsPrompt(String listId, String listName) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Product toegevoegd!'),
+        action: SnackBarAction(
+          label: 'AI Suggesties',
+          textColor: Colors.white,
+          onPressed: () => _triggerAiSuggestions(listId),
+        ),
+        backgroundColor: brandGreen,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Future<void> _triggerAiSuggestions(String listId) async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) return;
+
+    // Toon loading sheet
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const _SuggestionsLoadingSheet(),
+    );
+
+    try {
+      // Haal items op uit de lijst
+      final items = await ShoppingListService.getListItems(listId);
+      final productNames = items
+          .map((item) => item['product_name'] as String? ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
+
+      if (productNames.isEmpty) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        return;
+      }
+
+      final result = await SuggestionService.getPromotionSuggestions(
+        storeName: widget.storeName,
+        scannedProducts: productNames,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // sluit loading
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (_) => _CatalogSuggestionsSheet(
+          data: result,
+          brandGreen: brandGreen,
+          onAddSuggestion: (String productName) {
+            // Zoek het product in de promoties lijst en voeg toe als gevonden
+            final match = _promotions.firstWhere(
+              (p) => (p['product_name'] ?? '').toString().toLowerCase() ==
+                  productName.toLowerCase(),
+              orElse: () => <String, dynamic>{},
+            );
+            if (match.isNotEmpty && match['product_id'] != null && _lastListId != null) {
+              _addSuggestionToList(match, _lastListId!, _lastListName ?? 'Lijst');
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij suggesties: $e')),
+      );
+    }
+  }
+
+  Future<void> _addSuggestionToList(
+      Map<String, dynamic> product, String listId, String listName) async {
+    try {
+      await ShoppingListService.addItemByProductId(
+        listId: listId,
+        productId: product['product_id'].toString(),
+      );
+      if (!mounted) return;
+      setState(() => _addedCount++);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product['product_name']} toegevoegd aan $listName'),
+          backgroundColor: brandGreen,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout: $e')),
+      );
+    }
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -397,6 +547,27 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
+      floatingActionButton: _addedCount > 0 && _lastListId != null
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ShoppingListDetailPage(
+                      listId: _lastListId!,
+                      listName: _lastListName ?? 'Lijst',
+                    ),
+                  ),
+                );
+              },
+              backgroundColor: brandGreen,
+              icon: const Icon(Icons.shopping_cart, color: Colors.white),
+              label: Text(
+                '$_addedCount ${_addedCount == 1 ? 'item' : 'items'}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: Column(
         children: [
 
@@ -674,79 +845,82 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
         : null;
     final bool isHealthy = promo['is_healthy'] ?? false;
 
-    return Card(
-      color: Colors.white,
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                child: SizedBox(
-                  height: 110,
-                  width: double.infinity,
-                  child: imageUrl != null
-                      ? Image.network(imageUrl, fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) =>
-                              const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
-                      : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
-                ),
-              ),
-              if (discount != null && discount.isNotEmpty)
-                Positioned(
-                  top: 8, left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: Colors.red, borderRadius: BorderRadius.circular(6)),
-                    child: Text(discount,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              if (isHealthy)
-                Positioned(
-                  top: 8, right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: brandGreen, shape: BoxShape.circle),
-                    child: const Icon(Icons.eco, color: Colors.white, size: 12),
-                  ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => _showAddToListSheet(promo),
+      child: Card(
+        color: Colors.white,
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                Text(name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    if (promoPrice != null)
-                      Text("€${promoPrice.toStringAsFixed(2)}",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15, color: brandGreen)),
-                    const SizedBox(width: 6),
-                    if (originalPrice != null)
-                      Text("€${originalPrice.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                              decoration: TextDecoration.lineThrough)),
-                  ],
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                  child: SizedBox(
+                    height: 110,
+                    width: double.infinity,
+                    child: imageUrl != null
+                        ? Image.network(imageUrl, fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
+                        : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+                  ),
                 ),
+                if (discount != null && discount.isNotEmpty)
+                  Positioned(
+                    top: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                          color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                      child: Text(discount,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                if (isHealthy)
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(color: brandGreen, shape: BoxShape.circle),
+                      child: const Icon(Icons.eco, color: Colors.white, size: 12),
+                    ),
+                  ),
               ],
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (promoPrice != null)
+                        Text("€${promoPrice.toStringAsFixed(2)}",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15, color: brandGreen)),
+                      const SizedBox(width: 6),
+                      if (originalPrice != null)
+                        Text("€${originalPrice.toStringAsFixed(2)}",
+                            style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                                decoration: TextDecoration.lineThrough)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -764,46 +938,631 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
         : null;
     final String? content = product['content'];
 
-    return Card(
-      color: Colors.white,
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-            child: SizedBox(
-              height: 110,
-              width: double.infinity,
-              child: imageUrl != null
-                  ? Image.network(imageUrl, fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) =>
-                          const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
-                  : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+    return GestureDetector(
+      onTap: () => _showAddToListSheet(product),
+      child: Card(
+        color: Colors.white,
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              child: SizedBox(
+                height: 110,
+                width: double.infinity,
+                child: imageUrl != null
+                    ? Image.network(imageUrl, fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) =>
+                            const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
+                    : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  if (content != null) ...[
+                    const SizedBox(height: 2),
+                    Text(content, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  ],
+                  const SizedBox(height: 6),
+                  if (price != null)
+                    Text("€${price.toStringAsFixed(2)}",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Add to List Bottom Sheet
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _AddToListSheet extends StatefulWidget {
+  final Map<String, dynamic> product;
+  final String baseUrl;
+  final Color brandGreen;
+  final String storeName;
+  final void Function(String listId, String listName) onAdded;
+
+  const _AddToListSheet({
+    required this.product,
+    required this.baseUrl,
+    required this.brandGreen,
+    required this.storeName,
+    required this.onAdded,
+  });
+
+  @override
+  State<_AddToListSheet> createState() => _AddToListSheetState();
+}
+
+class _AddToListSheetState extends State<_AddToListSheet> {
+  List<Map<String, dynamic>> _lists = [];
+  bool _isLoadingLists = true;
+  bool _isAdding = false;
+  bool _showNewListField = false;
+  final TextEditingController _newListController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLists();
+  }
+
+  @override
+  void dispose() {
+    _newListController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchLists() async {
+    try {
+      final lists = await ShoppingListService.getUserLists();
+      if (!mounted) return;
+      setState(() {
+        _lists = lists;
+        _isLoadingLists = false;
+        // Als er geen lijsten zijn, toon meteen het "nieuwe lijst" veld
+        if (lists.isEmpty) _showNewListField = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingLists = false;
+        _showNewListField = true;
+      });
+    }
+  }
+
+  Future<void> _addToList(String listId, String listName) async {
+    setState(() => _isAdding = true);
+    try {
+      await ShoppingListService.addItemByProductId(
+        listId: listId,
+        productId: widget.product['product_id'].toString(),
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      widget.onAdded(listId, listName);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isAdding = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij toevoegen: $e')),
+      );
+    }
+  }
+
+  Future<void> _createNewListAndAdd() async {
+    final name = _newListController.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _isAdding = true);
+    try {
+      final newList = await ShoppingListService.createListAndReturn(listName: name);
+      final listId = newList['list_id'] as String;
+      await _addToList(listId, name);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isAdding = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout: $e')),
+      );
+    }
+  }
+
+  // ── Helpers ──
+
+  String? _formatNum(dynamic val) {
+    if (val == null) return null;
+    final d = double.tryParse(val.toString());
+    if (d == null) return null;
+    return d.toStringAsFixed(1);
+  }
+
+  String _formatDate(dynamic val) {
+    if (val == null) return '?';
+    try {
+      final dt = DateTime.parse(val.toString());
+      return '${dt.day}/${dt.month}';
+    } catch (_) {
+      return val.toString();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.product;
+    final productName = p['product_name'] ?? 'Onbekend';
+    final promoPrice = p['promo_price'];
+    final originalPrice = p['original_price'];
+    final price = p['price'];
+    final discountLabel = p['discount_label'] ?? p['discount_percentage'];
+    final validFrom = p['valid_from'];
+    final validUntil = p['valid_until'];
+    final category = p['category'] ?? p['colruyt_category'];
+    final primaryMacro = p['primary_macro'];
+    final bool isHealthy = p['is_healthy'] ?? false;
+    final brand = p['brand'];
+
+    // Macros
+    final kcal = _formatNum(p['energy_kcal']);
+    final protein = _formatNum(p['proteins_g']);
+    final carbs = _formatNum(p['carbohydrates_g']);
+    final fat = _formatNum(p['fat_g']);
+    final bool hasMacros = kcal != null || protein != null;
+
+    final String? rawImageUrl = p['image_url'];
+    final String? imageUrl = rawImageUrl != null
+        ? '${widget.baseUrl}/proxy/image?url=${Uri.encodeQueryComponent(rawImageUrl)}'
+        : null;
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      builder: (_, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 12,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Handle ──
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // ═══════════════════════════════════════════════════════
+            // PRODUCT DETAIL SECTION
+            // ═══════════════════════════════════════════════════════
+
+            // Afbeelding + naam + prijs
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                if (content != null) ...[
-                  const SizedBox(height: 2),
-                  Text(content, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
-                ],
-                const SizedBox(height: 6),
-                if (price != null)
-                  Text("€${price.toStringAsFixed(2)}",
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 80, height: 80,
+                    color: Colors.grey[100],
+                    child: imageUrl != null
+                        ? Image.network(imageUrl, fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                const Center(child: Icon(Icons.image, size: 36, color: Colors.grey)))
+                        : const Center(child: Icon(Icons.image, size: 36, color: Colors.grey)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(productName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                      if (brand != null)
+                        Text(brand.toString(),
+                            style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                      const SizedBox(height: 6),
+                      // Prijs rij
+                      Row(
+                        children: [
+                          if (promoPrice != null)
+                            Text(
+                              "€${double.tryParse(promoPrice.toString())?.toStringAsFixed(2) ?? promoPrice}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 18,
+                                color: widget.brandGreen,
+                              ),
+                            ),
+                          if (promoPrice != null && originalPrice != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Text(
+                                "€${double.tryParse(originalPrice.toString())?.toStringAsFixed(2)}",
+                                style: const TextStyle(
+                                  color: Colors.grey, fontSize: 13,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ),
+                          if (promoPrice == null && price != null)
+                            Text(
+                              "€${double.tryParse(price.toString())?.toStringAsFixed(2) ?? price}",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
+
+            const SizedBox(height: 12),
+
+            // ── Promotie info chips ──
+            Wrap(
+              spacing: 8, runSpacing: 6,
+              children: [
+                if (discountLabel != null && discountLabel.toString().isNotEmpty)
+                  _infoChip(discountLabel.toString(), Colors.red, Colors.white, icon: Icons.local_offer),
+                if (isHealthy)
+                  _infoChip('Gezond', Colors.green.shade50, Colors.green.shade700, icon: Icons.eco),
+                if (category != null)
+                  _infoChip(category.toString(), Colors.blue.shade50, Colors.blue.shade700, icon: Icons.category),
+                if (primaryMacro != null && primaryMacro != 'None')
+                  _infoChip(primaryMacro.toString(), Colors.orange.shade50, Colors.orange.shade700, icon: Icons.fitness_center),
+                if (validFrom != null && validUntil != null)
+                  _infoChip(
+                    '${_formatDate(validFrom)} - ${_formatDate(validUntil)}',
+                    Colors.purple.shade50, Colors.purple.shade700,
+                    icon: Icons.calendar_today,
+                  ),
+              ],
+            ),
+
+            // ── Macros balk ──
+            if (hasMacros) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    if (kcal != null) _macroColumn('Kcal', kcal, Colors.orange),
+                    if (protein != null) _macroColumn('Eiwit', '${protein}g', Colors.red),
+                    if (carbs != null) _macroColumn('Koolh', '${carbs}g', Colors.blue),
+                    if (fat != null) _macroColumn('Vet', '${fat}g', Colors.amber),
+                  ],
+                ),
+              ),
+            ],
+
+            // ═══════════════════════════════════════════════════════
+            // TOEVOEGEN AAN LIJST SECTION
+            // ═══════════════════════════════════════════════════════
+
+            const Divider(height: 24),
+
+            const Text(
+              'Toevoegen aan lijst',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+
+            // Loading of lijsten
+            if (_isLoadingLists)
+              const Center(child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ))
+            else ...[
+              // Bestaande lijsten
+              if (_lists.isNotEmpty) ...[
+                ...(_lists.map((list) {
+                  final listName = list['list_name'] ?? '';
+                  final listId = list['list_id'] ?? '';
+                  return ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.list_alt, color: widget.brandGreen, size: 22),
+                    title: Text(listName, style: const TextStyle(fontSize: 14)),
+                    trailing: _isAdding
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(Icons.add_circle_outline, color: widget.brandGreen),
+                    onTap: _isAdding ? null : () => _addToList(listId, listName),
+                  );
+                })),
+                const Divider(height: 4),
+              ],
+
+              // Nieuwe lijst aanmaken
+              if (!_showNewListField)
+                TextButton.icon(
+                  onPressed: () => setState(() => _showNewListField = true),
+                  icon: const Icon(Icons.add, size: 20),
+                  label: const Text('Nieuwe lijst aanmaken'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: widget.brandGreen,
+                    padding: EdgeInsets.zero,
+                  ),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newListController,
+                        autofocus: _lists.isEmpty,
+                        decoration: InputDecoration(
+                          hintText: 'Naam van nieuwe lijst',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        ),
+                        onSubmitted: (_) => _createNewListAndAdd(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isAdding ? null : _createNewListAndAdd,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.brandGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      ),
+                      child: _isAdding
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Aanmaken & toevoegen'),
+                    ),
+                  ],
+                ),
+            ],
+
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoChip(String label, Color bg, Color fg, {IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Text(label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
         ],
+      ),
+    );
+  }
+
+  Widget _macroColumn(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+      ],
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Suggestions Sheets (voor catalog page)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _SuggestionsLoadingSheet extends StatelessWidget {
+  const _SuggestionsLoadingSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 200,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('AI suggesties laden...'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogSuggestionsSheet extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final Color brandGreen;
+  final void Function(String productName)? onAddSuggestion;
+
+  const _CatalogSuggestionsSheet({
+    required this.data,
+    required this.brandGreen,
+    this.onAddSuggestion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestions = data['suggestions'] as List<dynamic>? ?? [];
+    final mealTip = data['meal_tip'] as String? ?? '';
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (_, controller) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Suggesties voor jou',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (mealTip.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.lightbulb_outline, size: 18, color: Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        mealTip,
+                        style: TextStyle(color: Colors.green.shade800, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.separated(
+                controller: controller,
+                itemCount: suggestions.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final s = suggestions[index] as Map<String, dynamic>;
+                  final isPromotion = s['is_promotion'] ?? (s['discount_label'] != null);
+                  final productName = s['product_name'] ?? '';
+
+                  return ListTile(
+                    leading: Icon(
+                      s['is_healthy'] == true ? Icons.eco : Icons.shopping_bag_outlined,
+                      color: s['is_healthy'] == true ? Colors.green : Colors.grey,
+                    ),
+                    title: Text(productName),
+                    subtitle: Text(
+                      s['reason'] ?? '',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (isPromotion && s['discount_label'] != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  s['discount_label'],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            else
+                              Text(
+                                'Geen promotie',
+                                style: TextStyle(color: Colors.grey[500], fontSize: 10),
+                              ),
+                            if (s['promo_price'] != null)
+                              Text(
+                                '€${(s['promo_price'] as num).toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: brandGreen,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (onAddSuggestion != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.add_circle, color: brandGreen),
+                            onPressed: () => onAddSuggestion!(productName),
+                            tooltip: 'Toevoegen aan lijst',
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

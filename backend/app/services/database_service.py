@@ -201,7 +201,10 @@ class DatabaseService:
             if store_id:
                 rows = await conn.fetch(
                     """
-                    SELECT p.*, s.store_name, pr.image_url
+                    SELECT p.*, s.store_name,
+                           pr.image_url,
+                           pr.energy_kcal, pr.proteins_g, pr.carbohydrates_g, pr.fat_g,
+                           pr.brand
                     FROM promotions p
                     JOIN stores s ON p.store_id = s.store_id
                     LEFT JOIN products pr ON p.product_id = pr.product_id
@@ -213,7 +216,10 @@ class DatabaseService:
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT p.*, s.store_name, pr.image_url
+                    SELECT p.*, s.store_name,
+                           pr.image_url,
+                           pr.energy_kcal, pr.proteins_g, pr.carbohydrates_g, pr.fat_g,
+                           pr.brand
                     FROM promotions p
                     JOIN stores s ON p.store_id = s.store_id
                     LEFT JOIN products pr ON p.product_id = pr.product_id

@@ -9,3 +9,8 @@ frontend/mealprep_flutter/windows/flutter/generated_plugin_registrant.cc
 frontend/mealprep_flutter/windows/flutter/generated_plugin_registrant.h
 frontend/mealprep_flutter/windows/flutter/generated_plugins.cmake
 backend/app/data/openfoodfacts.db
+frontend/mealprep_flutter/linux/flutter/generated_plugin_registrant.cc
+frontend/mealprep_flutter/linux/flutter/generated_plugins.cmake
+frontend/mealprep_flutter/macos/Flutter/GeneratedPluginRegistrant.swift
+frontend/mealprep_flutter/windows/flutter/generated_plugin_registrant.cc
+frontend/mealprep_flutter/windows/flutter/generated_plugins.cmake

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.auth import get_current_user
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
@@ -124,7 +125,6 @@ def parse_date(date_str: str) -> datetime:
 # ==================== SCHEMAS ====================
 
 class AddToCartRequest(BaseModel):
-    user_id: str
     list_id: str
     product_id: str
     quantity: int = 1
@@ -233,25 +233,49 @@ async def get_products(store: str = None, limit: int = 50):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/shopping-list/add")
-async def add_to_shopping_list(req: AddToCartRequest):
+async def add_to_shopping_list(req: AddToCartRequest, user_id: str = Depends(get_current_user)):
     """
     Voeg een product toe aan een specifieke shopping list (shopping_list_items tabel)
     """
     try:
-        item_id = str(uuid.uuid4())
         db = await get_database_service()
         async with db.pool.acquire() as conn:
-            # Pas aan naar jouw daadwerkelijke tabelnaam voor lijst-items (bijv. shopping_list_items)
-            await conn.execute(
-                """
-                INSERT INTO shopping_list_items (item_id, list_id, product_id, quantity) 
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (list_id, product_id) 
-                DO UPDATE SET quantity = shopping_list_items.quantity + $4
-                """,
-                item_id, req.list_id, req.product_id, req.quantity
+            # Controleer of lijst van ingelogde gebruiker is
+            owner = await conn.fetchrow(
+                "SELECT list_id FROM shopping_lists WHERE list_id = $1::uuid AND user_id = $2::uuid",
+                req.list_id, user_id
             )
+            if not owner:
+                raise HTTPException(status_code=403, detail="Lijst niet gevonden of geen toegang")
+
+            # Check of product al in de lijst zit
+            existing = await conn.fetchrow(
+                """
+                SELECT item_id, quantity FROM shopping_list_items
+                WHERE list_id = $1::uuid AND product_id = $2::uuid
+                """,
+                req.list_id, req.product_id
+            )
+
+            if existing:
+                # Update quantity
+                await conn.execute(
+                    "UPDATE shopping_list_items SET quantity = quantity + $1 WHERE item_id = $2::uuid",
+                    req.quantity, str(existing['item_id'])
+                )
+            else:
+                # Insert nieuw item
+                item_id = str(uuid.uuid4())
+                await conn.execute(
+                    """
+                    INSERT INTO shopping_list_items (item_id, list_id, product_id, quantity)
+                    VALUES ($1::uuid, $2::uuid, $3::uuid, $4)
+                    """,
+                    item_id, req.list_id, req.product_id, req.quantity
+                )
         return {"message": "Product succesvol toegevoegd aan lijst"}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error adding to list: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -616,7 +640,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                 rows = await conn.fetch(
                     """
                     SELECT p.product_id, p.barcode, p.product_name, p.brand,
-                           p.image_url, p.price, p.content, p.colruyt_category
+                           p.image_url, p.price, p.content, p.colruyt_category,
+                           p.energy_kcal, p.proteins_g, p.carbohydrates_g, p.fat_g
                     FROM products p
                     WHERE LOWER(p.product_name) LIKE LOWER($1)
                       AND p.colruyt_category <> 'Niet-voeding'
@@ -630,7 +655,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                 rows = await conn.fetch(
                     """
                     SELECT product_id, barcode, product_name, brand,
-                           image_url, price, content, colruyt_category
+                           image_url, price, content, colruyt_category,
+                           energy_kcal, proteins_g, carbohydrates_g, fat_g
                     FROM products
                     WHERE LOWER(product_name) LIKE LOWER($1)
                         AND colruyt_category NOT LIKE 'Niet-voeding'

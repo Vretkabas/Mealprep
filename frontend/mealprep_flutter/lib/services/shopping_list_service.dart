@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShoppingListService {
-  static const String baseUrl = 'http://10.0.2.2:8081';
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081'; // Android emulator
+  }
 
 
 static Future<Map<String, String>> _authHeaders() async {
@@ -66,7 +70,43 @@ static Future<void> createList({
   }
 }
 
+static Future<Map<String, dynamic>> createListAndReturn({
+  required String listName,
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/shopping-lists'),
+    headers: await _authHeaders(),
+    body: jsonEncode({
+      'list_name': listName,
+    }),
+  );
 
+  if (response.statusCode != 201) {
+    throw Exception('Kon lijst niet aanmaken (${response.statusCode})');
+  }
+
+  return jsonDecode(response.body) as Map<String, dynamic>;
+}
+
+static Future<void> addItemByProductId({
+  required String listId,
+  required String productId,
+  int quantity = 1,
+}) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/shopping-list/add'),
+    headers: await _authHeaders(),
+    body: jsonEncode({
+      'list_id': listId,
+      'product_id': productId,
+      'quantity': quantity,
+    }),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Kon product niet toevoegen (${response.statusCode})');
+  }
+}
 
 static Future<void> addItemByBarcode({
   required String listId,

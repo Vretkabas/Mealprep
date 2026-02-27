@@ -99,31 +99,35 @@ async def generate_promotion_suggestions(
 GEBRUIKERSPROFIEL:
 {user_context}
 
-GESCANDE PRODUCTEN (al in winkelmandje):
+PRODUCTEN IN WINKELMANDJE:
 {scanned_list}
 
 HUIDIGE PROMOTIES BIJ {store_name.upper()}:
 {promotions_context}
 
 TAAK:
-Suggereer MAX 5 producten uit de promoties hierboven die:
-1. Goed combineren met de gescande producten (qua recept/maaltijd)
-2. Passen bij het doel en allergieën van de gebruiker
-3. Bij voorkeur gezond zijn (tenzij het doel anders is)
-4. Binnen het budget passen indien opgegeven
+Suggereer MAX 5 producten die goed passen bij het winkelmandje van de gebruiker:
 
-Geef ook een korte praktische meal tip (max 2 zinnen) over hoe de gescande producten + suggesties gecombineerd kunnen worden.
+1. Geef VOORKEUR aan producten die momenteel in promotie zijn bij {store_name} (uit de lijst hierboven)
+2. Als er geen relevante promoties zijn voor een belangrijk ontbrekend ingrediënt, suggereer dan gerust een product ZONDER promotie. Vermeld dan duidelijk dat het geen promotie is maar wel een goede aanvulling. Voorbeeld: "Kip is geen promotie, maar past perfect bij je pasta en groenten op basis van je eiwitdoel."
+3. Producten moeten goed combineren met de producten in het winkelmandje (qua recept/maaltijd)
+4. Passen bij het doel en allergieën van de gebruiker
+5. Bij voorkeur gezond (tenzij het doel anders is)
+6. Binnen het budget passen indien opgegeven
+
+Geef ook een korte praktische meal tip (max 2 zinnen) over hoe alles gecombineerd kan worden tot een maaltijd.
 
 Antwoord UITSLUITEND in dit JSON formaat:
 {{
   "suggestions": [
     {{
-      "product_name": "naam van het promotieproduct",
+      "product_name": "naam van het product",
       "reason": "korte reden waarom dit past (max 1 zin)",
-      "discount_label": "bv. -30% of 1+1 GRATIS",
+      "discount_label": "bv. -30% of 1+1 GRATIS (null als geen promotie)",
       "promo_price": 1.89,
       "category": "categorie",
-      "is_healthy": true
+      "is_healthy": true,
+      "is_promotion": true
     }}
   ],
   "meal_tip": "Korte tip over hoe je dit kunt combineren."
