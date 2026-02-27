@@ -83,7 +83,11 @@ def get_list_items_with_names(supabase: Client, list_id: str):
             product_id,
             quantity,
             is_checked,
-            products!inner(product_name, barcode)
+            has_promo,
+            promo_id,
+            price_per_unit,
+            products!inner(product_name, barcode, price, brand, image_url),
+            promotions(promo_id, discount_percentage, original_price, promo_price, deal_quantity, is_meerdere_artikels)
         """) \
         .eq("list_id", list_id) \
         .execute()
@@ -91,16 +95,45 @@ def get_list_items_with_names(supabase: Client, list_id: str):
     if not result.data:
         return []
 
-    # Supabase nested select geeft dicts zoals {'products': {'product_name': ...}}
     items_with_names = []
     for row in result.data:
+        promo = row.get("promotions") or {}
+        product = row.get("products") or {}
+
+        # Bereken effectieve prijs per stuk
+        price_per_unit = row.get("price_per_unit")
+        original_price = promo.get("original_price") or (product.get("price") if product else None)
+        promo_price = promo.get("promo_price")
+
+        if price_per_unit is None and promo_price:
+            price_per_unit = promo_price
+        elif price_per_unit is None and original_price:
+            price_per_unit = original_price
+
+        quantity = row["quantity"]
+        line_total = round(price_per_unit * quantity, 2) if price_per_unit else None
+
+        # Besparing per stuk
+        savings_per_unit = None
+        if row.get("has_promo") and original_price and promo_price:
+            savings_per_unit = round(original_price - promo_price, 2)
+
         items_with_names.append({
             "item_id": row["item_id"],
             "product_id": row["product_id"],
-            "product_name": row["products"]["product_name"],
-            "barcode": row["products"]["barcode"],
-            "quantity": row["quantity"],
-            "is_checked": row["is_checked"]
+            "product_name": product.get("product_name", "Onbekend"),
+            "barcode": product.get("barcode"),
+            "brand": product.get("brand"),
+            "quantity": quantity,
+            "is_checked": row["is_checked"],
+            "has_promo": row.get("has_promo", False),
+            "price_per_unit": price_per_unit,
+            "original_price": original_price,
+            "promo_price": promo_price,
+            "line_total": line_total,
+            "savings_per_unit": savings_per_unit,
+            "discount_label": promo.get("discount_percentage"),
+            "deal_quantity": promo.get("deal_quantity"),
         })
 
     return items_with_names

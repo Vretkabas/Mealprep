@@ -1016,9 +1016,20 @@ class _AddToListSheetState extends State<_AddToListSheet> {
   bool _showNewListField = false;
   final TextEditingController _newListController = TextEditingController();
 
+  // Promo quantity
+  late int _quantity;
+  late bool _hasPromo;
+  late int _dealQuantity;
+
   @override
   void initState() {
     super.initState();
+    final p = widget.product;
+    _hasPromo = p['promo_price'] != null;
+    _dealQuantity = (p['deal_quantity'] as int?) ?? 1;
+    final isMulti = p['is_meerdere_artikels'] == true;
+    // Stel deal-hoeveelheid voor als het een multi-item deal is
+    _quantity = (isMulti && _dealQuantity > 1) ? _dealQuantity : 1;
     _fetchLists();
   }
 
@@ -1050,9 +1061,21 @@ class _AddToListSheetState extends State<_AddToListSheet> {
   Future<void> _addToList(String listId, String listName) async {
     setState(() => _isAdding = true);
     try {
+      final p = widget.product;
+      final promoPrice = p['promo_price'] != null
+          ? double.tryParse(p['promo_price'].toString())
+          : null;
+      final originalPrice = p['original_price'] != null
+          ? double.tryParse(p['original_price'].toString())
+          : (p['price'] != null ? double.tryParse(p['price'].toString()) : null);
+
       await ShoppingListService.addItemByProductId(
         listId: listId,
-        productId: widget.product['product_id'].toString(),
+        productId: p['product_id'].toString(),
+        quantity: _quantity,
+        hasPromo: _hasPromo,
+        promoId: _hasPromo ? p['promo_id']?.toString() : null,
+        pricePerUnit: promoPrice ?? originalPrice,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -1265,6 +1288,120 @@ class _AddToListSheetState extends State<_AddToListSheet> {
                     if (carbs != null) _macroColumn('Koolh', '${carbs}g', Colors.blue),
                     if (fat != null) _macroColumn('Vet', '${fat}g', Colors.amber),
                   ],
+                ),
+              ),
+            ],
+
+            // ═══════════════════════════════════════════════════════
+            // PROMO DEAL SUGGESTIE
+            // ═══════════════════════════════════════════════════════
+
+            if (_hasPromo && _dealQuantity > 1) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.local_offer, size: 16, color: Colors.orange.shade700),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            discountLabel != null
+                                ? 'Promotie: $discountLabel — koop er $_dealQuantity!'
+                                : 'Multi-deal: koop er $_dealQuantity voor maximale besparing!',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Colors.orange.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (promoPrice != null && originalPrice != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        () {
+                          final op = double.tryParse(originalPrice.toString()) ?? 0;
+                          final pp = double.tryParse(promoPrice.toString()) ?? 0;
+                          final totalNormal = op * _dealQuantity;
+                          final totalPromo = pp * _dealQuantity;
+                          final saving = totalNormal - totalPromo;
+                          return 'Normaal: €${totalNormal.toStringAsFixed(2)} → Nu: €${totalPromo.toStringAsFixed(2)} (bespaar €${saving.toStringAsFixed(2)})';
+                        }(),
+                        style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // ═══════════════════════════════════════════════════════
+            // HOEVEELHEID SELECTOR
+            // ═══════════════════════════════════════════════════════
+
+            Row(
+              children: [
+                const Text('Aantal:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Spacer(),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove, size: 18),
+                        onPressed: _quantity > 1
+                            ? () => setState(() => _quantity--)
+                            : null,
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        padding: EdgeInsets.zero,
+                      ),
+                      Container(
+                        width: 36,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$_quantity',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add, size: 18),
+                        onPressed: () => setState(() => _quantity++),
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Prijs overzicht
+            if (promoPrice != null || price != null) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  () {
+                    final unitPrice = double.tryParse((promoPrice ?? price).toString()) ?? 0;
+                    return '$_quantity × €${unitPrice.toStringAsFixed(2)} = €${(unitPrice * _quantity).toStringAsFixed(2)}';
+                  }(),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ),
             ],

@@ -128,6 +128,9 @@ class AddToCartRequest(BaseModel):
     list_id: str
     product_id: str
     quantity: int = 1
+    has_promo: bool = False
+    promo_id: Optional[str] = None
+    price_per_unit: Optional[float] = None
 
 # Schema for macros from scraper
 class MacrosSchema(BaseModel):
@@ -258,20 +261,32 @@ async def add_to_shopping_list(req: AddToCartRequest, user_id: str = Depends(get
             )
 
             if existing:
-                # Update quantity
+                # Update quantity (en promo info als meegegeven)
                 await conn.execute(
-                    "UPDATE shopping_list_items SET quantity = quantity + $1 WHERE item_id = $2::uuid",
-                    req.quantity, str(existing['item_id'])
+                    """
+                    UPDATE shopping_list_items
+                    SET quantity = $1,
+                        has_promo = COALESCE($3, has_promo),
+                        promo_id = COALESCE($4::uuid, promo_id),
+                        price_per_unit = COALESCE($5, price_per_unit)
+                    WHERE item_id = $2::uuid
+                    """,
+                    req.quantity, str(existing['item_id']),
+                    req.has_promo if req.has_promo else None,
+                    req.promo_id,
+                    req.price_per_unit
                 )
             else:
                 # Insert nieuw item
                 item_id = str(uuid.uuid4())
                 await conn.execute(
                     """
-                    INSERT INTO shopping_list_items (item_id, list_id, product_id, quantity)
-                    VALUES ($1::uuid, $2::uuid, $3::uuid, $4)
+                    INSERT INTO shopping_list_items
+                        (item_id, list_id, product_id, quantity, has_promo, promo_id, price_per_unit)
+                    VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7)
                     """,
-                    item_id, req.list_id, req.product_id, req.quantity
+                    item_id, req.list_id, req.product_id, req.quantity,
+                    req.has_promo, req.promo_id, req.price_per_unit
                 )
         return {"message": "Product succesvol toegevoegd aan lijst"}
     except HTTPException:

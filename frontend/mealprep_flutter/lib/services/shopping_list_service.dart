@@ -92,15 +92,23 @@ static Future<void> addItemByProductId({
   required String listId,
   required String productId,
   int quantity = 1,
+  bool hasPromo = false,
+  String? promoId,
+  double? pricePerUnit,
 }) async {
+  final body = <String, dynamic>{
+    'list_id': listId,
+    'product_id': productId,
+    'quantity': quantity,
+    'has_promo': hasPromo,
+  };
+  if (promoId != null) body['promo_id'] = promoId;
+  if (pricePerUnit != null) body['price_per_unit'] = pricePerUnit;
+
   final response = await http.post(
     Uri.parse('$baseUrl/shopping-list/add'),
     headers: await _authHeaders(),
-    body: jsonEncode({
-      'list_id': listId,
-      'product_id': productId,
-      'quantity': quantity,
-    }),
+    body: jsonEncode(body),
   );
 
   if (response.statusCode != 200) {
