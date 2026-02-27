@@ -619,6 +619,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                            p.image_url, p.price, p.content, p.colruyt_category
                     FROM products p
                     WHERE LOWER(p.product_name) LIKE LOWER($1)
+                      AND p.colruyt_category <> 'Niet-voeding'
+                      AND p.price <> 0.00
                     ORDER BY p.product_name
                     LIMIT 50
                     """,
@@ -631,6 +633,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                            image_url, price, content, colruyt_category
                     FROM products
                     WHERE LOWER(product_name) LIKE LOWER($1)
+                        AND colruyt_category NOT LIKE 'Niet-voeding'
+                        AND p.price <> 0.00
                     ORDER BY product_name
                     LIMIT 50
                     """,
