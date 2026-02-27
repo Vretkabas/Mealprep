@@ -141,6 +141,8 @@ class DatabaseService:
         category: Optional[str] = None,
         primary_macro: Optional[str] = None,
         is_healthy: bool = False,
+        is_meerdere_artikels: bool = False,
+        deal_quantity: int = 1,
     ) -> str:
         """Create a new promotion. discount_label is the raw text like '1+1 GRATIS', '-50%'."""
         promo_id = str(uuid.uuid4())
@@ -163,13 +165,15 @@ class DatabaseService:
                         promo_id, store_id, product_id, barcode, product_name,
                         original_price, promo_price, discount_percentage,
                         valid_from, valid_until, is_active,
-                        category, primary_macro, is_healthy
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, $13)
+                        category, primary_macro, is_healthy,
+                        is_meerdere_artikels, deal_quantity
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, $13, $14, $15)
                     """,
                     promo_id, store_id, product_id, barcode, product_name,
                     original_price, promo_price, discount_label,
                     valid_from, valid_until,
                     category, primary_macro, is_healthy,
+                    is_meerdere_artikels, deal_quantity,
                 )
             print(f"Created promotion {promo_id} for {barcode} [{category}]")
             return promo_id

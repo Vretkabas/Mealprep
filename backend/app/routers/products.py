@@ -14,6 +14,41 @@ router = APIRouter()
 
 # ==================== HELPER FUNCTIONS ====================
 
+def parse_deal_info(discount: str) -> tuple:
+    """
+    Fallback: parse discount string to (is_meerdere_artikels, deal_quantity).
+    Used when Gemini doesn't return these fields.
+      "N+M GRATIS"          -> (True,  N+M)   bv. "6+6 GRATIS" -> (True, 12)
+      "2de/2e GRATIS"       -> (True,  2)
+      "2de aan -X%"         -> (True,  2)
+      "2de aan halve prijs" -> (True,  2)
+      "-20%", "30% KORTING" -> (False, 1)
+    """
+    import re
+    try:
+        d = discount.strip().upper()
+
+        match_nm = re.search(r'(\d+)\+(\d+)\s*GRATIS', d)
+        if match_nm:
+            n, m = int(match_nm.group(1)), int(match_nm.group(2))
+            return True, n + m
+
+        if re.search(r'2(?:DE|E)\s+GRATIS', d):
+            return True, 2
+
+        if re.search(r'2(?:DE|E)\s+AAN\s+', d):
+            return True, 2
+
+        # "-40% VANAF 6 ST" / "40% VANAF 6 ST"
+        match_vanaf = re.search(r'VANAF\s+(\d+)\s*ST', d)
+        if match_vanaf:
+            return True, int(match_vanaf.group(1))
+
+        return False, 1
+    except Exception:
+        return False, 1
+
+
 def parse_discount_percentage(discount: str) -> Optional[float]:
     """
     Parse discount string to percentage.
@@ -54,10 +89,10 @@ def parse_discount_percentage(discount: str) -> Optional[float]:
             # You buy N+M but only pay for N → discount = M/(N+M) * 100
             return round(m / (n + m) * 100, 2)
 
-        # Handle simple percentage format: "-50%", "50%", "-25%"
-        if "%" in discount:
-            num = discount.replace("%", "").replace("-", "").strip()
-            return float(num)
+        # Handle simple percentage format: "-50%", "50%", "-25%", "-40% VANAF 6 ST"
+        match_pct = re.search(r'(\d+(?:[.,]\d+)?)\s*%', discount)
+        if match_pct:
+            return float(match_pct.group(1).replace(",", "."))
 
         return None
     except:
@@ -432,6 +467,15 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                     if original_price and discount_pct:
                         promo_price = round(original_price * (1 - discount_pct / 100), 2)
 
+                # Multi-artikel info: prefer Gemini, fallback to regex parser
+                gemini_meerdere = enrichment.get("is_meerdere_artikels")
+                gemini_deal_qty = enrichment.get("deal_quantity")
+                if gemini_meerdere is not None and gemini_deal_qty is not None:
+                    is_meerdere_artikels = bool(gemini_meerdere)
+                    deal_quantity = int(gemini_deal_qty)
+                else:
+                    is_meerdere_artikels, deal_quantity = parse_deal_info(discount)
+
                 # Gemini enrichment data
                 category = enrichment.get("category", "Overig")
                 primary_macro = enrichment.get("primary_macro", "None")
@@ -471,6 +515,8 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         category=category,
                         primary_macro=primary_macro,
                         is_healthy=is_healthy,
+                        is_meerdere_artikels=is_meerdere_artikels,
+                        deal_quantity=deal_quantity,
                     )
 
                     processed = ProcessedColruytProduct(
@@ -511,6 +557,8 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         category=category,
                         primary_macro=primary_macro,
                         is_healthy=is_healthy,
+                        is_meerdere_artikels=is_meerdere_artikels,
+                        deal_quantity=deal_quantity,
                     )
 
                     processed = ProcessedColruytProduct(
