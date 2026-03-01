@@ -14,9 +14,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Placeholder data (Later komt dit uit Supabase)
   String _userName = "John"; 
-  int _scansThisWeek = 12;
-  double _savedThisWeek = 45.00;
-  int _healthScore = 78;
+  final int _scansThisWeek = 12;
+  final double _savedThisWeek = 45.00;
+  final int _healthScore = 78;
 
   int _selectedIndex = 0; // 0 = Home
 

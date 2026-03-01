@@ -22,7 +22,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
   List<Map<String, dynamic>> _items = [];
   final TextEditingController _barcodeController = TextEditingController();
   bool _isLoading = true;
-  Set<String> _selectedItemIds = {};
+  final Set<String> _selectedItemIds = {};
 
   @override
   void initState() {
@@ -496,7 +496,7 @@ class _SuggestionsSheet extends StatelessWidget {
               child: ListView.separated(
                 controller: controller,
                 itemCount: suggestions.length,
-                separatorBuilder: (_, __) => const Divider(),
+                separatorBuilder: (_, _) => const Divider(),
                 itemBuilder: (_, index) {
                   final s = suggestions[index] as Map<String, dynamic>;
                   return ListTile(

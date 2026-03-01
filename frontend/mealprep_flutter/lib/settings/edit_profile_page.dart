@@ -667,7 +667,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)]),
-      child: SwitchListTile(title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)), value: value, activeColor: const Color(0xFF1B8C61), onChanged: onChanged),
+      child: SwitchListTile(title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)), value: value, activeThumbColor: const Color(0xFF1B8C61), onChanged: onChanged),
     );
   }
 
