@@ -1,9 +1,30 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FavoritesService {
-  static const String _baseUrl = 'http://10.0.2.2:8000';
+  static String get _baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8000';
+    }
+
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    }
+
+    if (Platform.isIOS) {
+      return 'http://localhost:8000';
+    }
+
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      return 'http://localhost:8000';
+    }
+
+    // falback voor fysiek toestel
+    return 'http://:8000'; // moet lokaal ip van pc ingeven
+  }
 
   static Future<String> _getToken() async {
     final session = Supabase.instance.client.auth.currentSession;
