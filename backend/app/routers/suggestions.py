@@ -21,6 +21,7 @@ class SuggestionItem(BaseModel):
     promo_price: Optional[float] = None
     category: Optional[str] = None
     is_healthy: Optional[bool] = None
+    is_promotion: Optional[bool] = None
 
 
 class SuggestionResponse(BaseModel):

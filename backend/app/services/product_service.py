@@ -22,6 +22,7 @@ class ProductMatch:
     fiber_100g: Optional[float]
     salt_100g: Optional[float]
     match_score: Optional[float] = None
+    image_url: Optional[str] = None
 
 
 def get_db_connection():
@@ -134,6 +135,9 @@ def find_product_by_barcode_api(barcode: str) -> Optional[ProductMatch]:
 
             print(f"  API match gevonden: {product.get('product_name', 'Onbekend')}")
 
+            # Kies beste afbeelding: front_url > image_url > None
+            img = product.get("image_front_url") or product.get("image_url")
+
             return ProductMatch(
                 barcode=barcode,
                 product_name=product.get("product_name"),
@@ -145,7 +149,8 @@ def find_product_by_barcode_api(barcode: str) -> Optional[ProductMatch]:
                 sugars_100g=nutriments.get("sugars_100g"),
                 fiber_100g=nutriments.get("fiber_100g"),
                 salt_100g=nutriments.get("salt_100g"),
-                match_score=100.0
+                match_score=100.0,
+                image_url=img,
             )
         else:
             print(f"  API: barcode {barcode} niet gevonden.")

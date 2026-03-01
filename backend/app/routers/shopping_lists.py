@@ -1,7 +1,7 @@
 from app.auth import get_current_user
 from fastapi import APIRouter, HTTPException, Depends
 from app.supabase_client import supabase
-from app.services.shopping_list_service import add_item_by_barcode, get_list_items_with_names
+from app.services.shopping_list_service import add_item_by_barcode, get_list_items_with_names, recalculate_list_totals
 
 router = APIRouter()
 
@@ -56,6 +56,16 @@ def get_user_lists(user_id: str = Depends(get_current_user)):
 @router.patch("/shopping-lists/items/{item_id}")
 def update_item(item_id: str, data: dict, user_id: str = Depends(get_current_user)):
 
+    # Haal list_id op vóór de update (nodig voor herberekening)
+    item_row = supabase.table("shopping_list_items") \
+        .select("list_id, quantity") \
+        .eq("item_id", item_id) \
+        .single() \
+        .execute()
+    if not item_row.data:
+        raise HTTPException(status_code=404, detail="Item niet gevonden")
+    list_id = item_row.data["list_id"]
+
     update_data = {}
 
     if "is_checked" in data:
@@ -73,14 +83,30 @@ def update_item(item_id: str, data: dict, user_id: str = Depends(get_current_use
         .update(update_data) \
         .eq("item_id", item_id) \
         .execute()
+
+    # Herbereken list totals alleen als quantity is gewijzigd (niet bij is_checked)
+    if "quantity" in data:
+        recalculate_list_totals(supabase, list_id)
+
     return result.data[0]
 
 @router.delete("/shopping-lists/items/{item_id}", status_code=204)
 def delete_item(item_id: str, user_id: str = Depends(get_current_user)):
+    # Haal list_id op vóór het verwijderen
+    item_row = supabase.table("shopping_list_items") \
+        .select("list_id") \
+        .eq("item_id", item_id) \
+        .single() \
+        .execute()
+    list_id = item_row.data["list_id"] if item_row.data else None
+
     supabase.table("shopping_list_items") \
         .delete() \
         .eq("item_id", item_id) \
         .execute()
+
+    if list_id:
+        recalculate_list_totals(supabase, list_id)
 
 
 @router.delete("/shopping-lists/{list_id}", status_code=204)

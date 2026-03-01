@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.auth import get_current_user
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import List, Optional
@@ -13,6 +14,63 @@ router = APIRouter()
 
 
 # ==================== HELPER FUNCTIONS ====================
+
+async def _recalculate_list_totals_async(conn, list_id: str):
+    """
+    Herbereken estimated_total_price en estimated_savings voor een shopping list
+    via een asyncpg connectie. Houdt rekening met 'meerdere artikels' promoties.
+    """
+    items = await conn.fetch("""
+        SELECT
+            sli.quantity,
+            sli.has_promo,
+            COALESCE(pr.original_price, p.price) AS original_price,
+            pr.promo_price,
+            pr.deal_quantity,
+            pr.is_meerdere_artikels
+        FROM shopping_list_items sli
+        LEFT JOIN products p ON sli.product_id = p.product_id
+        LEFT JOIN promotions pr ON sli.promo_id = pr.promo_id AND sli.has_promo = true
+        WHERE sli.list_id = $1::uuid
+    """, list_id)
+
+    total_price = 0.0
+    total_savings = 0.0
+
+    for item in items:
+        quantity = item['quantity'] or 1
+        has_promo = item['has_promo']
+        original_price = float(item['original_price'] or 0)
+        promo_price = float(item['promo_price']) if item['promo_price'] is not None else None
+        deal_quantity = item['deal_quantity']
+        is_meerdere_artikels = item['is_meerdere_artikels']
+
+        if has_promo and original_price and promo_price:
+            if is_meerdere_artikels and deal_quantity and deal_quantity > 1:
+                complete_groups = quantity // deal_quantity
+                remaining = quantity % deal_quantity
+                line_total = complete_groups * deal_quantity * promo_price + remaining * original_price
+                item_savings = complete_groups * deal_quantity * (original_price - promo_price)
+            else:
+                line_total = promo_price * quantity
+                item_savings = (original_price - promo_price) * quantity
+        elif original_price:
+            line_total = original_price * quantity
+            item_savings = 0.0
+        else:
+            line_total = 0.0
+            item_savings = 0.0
+
+        total_price += line_total
+        total_savings += item_savings
+
+    await conn.execute("""
+        UPDATE shopping_lists
+        SET estimated_total_price = $1,
+            estimated_savings = $2
+        WHERE list_id = $3::uuid
+    """, round(total_price, 2), round(total_savings, 2), list_id)
+
 
 def parse_deal_info(discount: str) -> tuple:
     """
@@ -124,10 +182,12 @@ def parse_date(date_str: str) -> datetime:
 # ==================== SCHEMAS ====================
 
 class AddToCartRequest(BaseModel):
-    user_id: str
     list_id: str
     product_id: str
     quantity: int = 1
+    has_promo: bool = False
+    promo_id: Optional[str] = None
+    price_per_unit: Optional[float] = None
 
 # Schema for macros from scraper
 class MacrosSchema(BaseModel):
@@ -233,25 +293,65 @@ async def get_products(store: str = None, limit: int = 50):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/shopping-list/add")
-async def add_to_shopping_list(req: AddToCartRequest):
+async def add_to_shopping_list(req: AddToCartRequest, user_id: str = Depends(get_current_user)):
     """
     Voeg een product toe aan een specifieke shopping list (shopping_list_items tabel)
     """
     try:
-        item_id = str(uuid.uuid4())
         db = await get_database_service()
         async with db.pool.acquire() as conn:
-            # Pas aan naar jouw daadwerkelijke tabelnaam voor lijst-items (bijv. shopping_list_items)
-            await conn.execute(
-                """
-                INSERT INTO shopping_list_items (item_id, list_id, product_id, quantity) 
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (list_id, product_id) 
-                DO UPDATE SET quantity = shopping_list_items.quantity + $4
-                """,
-                item_id, req.list_id, req.product_id, req.quantity
+            # Controleer of lijst van ingelogde gebruiker is
+            owner = await conn.fetchrow(
+                "SELECT list_id FROM shopping_lists WHERE list_id = $1::uuid AND user_id = $2::uuid",
+                req.list_id, user_id
             )
+            if not owner:
+                raise HTTPException(status_code=403, detail="Lijst niet gevonden of geen toegang")
+
+            # Check of product al in de lijst zit
+            existing = await conn.fetchrow(
+                """
+                SELECT item_id, quantity FROM shopping_list_items
+                WHERE list_id = $1::uuid AND product_id = $2::uuid
+                """,
+                req.list_id, req.product_id
+            )
+
+            if existing:
+                # Update quantity (en promo info als meegegeven)
+                await conn.execute(
+                    """
+                    UPDATE shopping_list_items
+                    SET quantity = $1,
+                        has_promo = COALESCE($3, has_promo),
+                        promo_id = COALESCE($4::uuid, promo_id),
+                        price_per_unit = COALESCE($5, price_per_unit)
+                    WHERE item_id = $2::uuid
+                    """,
+                    req.quantity, str(existing['item_id']),
+                    req.has_promo if req.has_promo else None,
+                    req.promo_id,
+                    req.price_per_unit
+                )
+            else:
+                # Insert nieuw item
+                item_id = str(uuid.uuid4())
+                await conn.execute(
+                    """
+                    INSERT INTO shopping_list_items
+                        (item_id, list_id, product_id, quantity, has_promo, promo_id, price_per_unit)
+                    VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7)
+                    """,
+                    item_id, req.list_id, req.product_id, req.quantity,
+                    req.has_promo, req.promo_id, req.price_per_unit
+                )
+
+            # Herbereken totalen voor de lijst (binnen async with block)
+            await _recalculate_list_totals_async(conn, req.list_id)
+
         return {"message": "Product succesvol toegevoegd aan lijst"}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error adding to list: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -499,7 +599,8 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         proteins_g=match.proteins_100g,
                         carbohydrates_g=match.carbohydrates_100g,
                         sugars_g=match.sugars_100g,
-                        fat_g=match.fat_100g
+                        fat_g=match.fat_100g,
+                        image_url=match.image_url,
                     )
 
                     await db.create_promotion(
@@ -616,7 +717,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                 rows = await conn.fetch(
                     """
                     SELECT p.product_id, p.barcode, p.product_name, p.brand,
-                           p.image_url, p.price, p.content, p.colruyt_category
+                           p.image_url, p.price, p.content, p.colruyt_category,
+                           p.energy_kcal, p.proteins_g, p.carbohydrates_g, p.fat_g
                     FROM products p
                     WHERE LOWER(p.product_name) LIKE LOWER($1)
                       AND p.colruyt_category <> 'Niet-voeding'
@@ -630,7 +732,8 @@ async def search_products(q: str, store_name: Optional[str] = None):
                 rows = await conn.fetch(
                     """
                     SELECT product_id, barcode, product_name, brand,
-                           image_url, price, content, colruyt_category
+                           image_url, price, content, colruyt_category,
+                           energy_kcal, proteins_g, carbohydrates_g, fat_g
                     FROM products
                     WHERE LOWER(product_name) LIKE LOWER($1)
                         AND colruyt_category NOT LIKE 'Niet-voeding'
@@ -659,6 +762,13 @@ async def get_promotions(store_name: Optional[str] = None):
             store = await db.get_store_by_name(store_name)
             if store:
                 store_id = store["store_id"]
+            else:
+                # if shop doesnt exist in db ==> no promotions to show, return empty list
+                return {
+                    "status": "success",
+                    "total": 0,
+                    "promotions": []
+                }
 
         promotions = await db.get_active_promotions(store_id)
 
