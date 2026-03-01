@@ -100,23 +100,44 @@ def get_list_items_with_names(supabase: Client, list_id: str):
         promo = row.get("promotions") or {}
         product = row.get("products") or {}
 
-        # Bereken effectieve prijs per stuk
-        price_per_unit = row.get("price_per_unit")
         original_price = promo.get("original_price") or (product.get("price") if product else None)
         promo_price = promo.get("promo_price")
-
-        if price_per_unit is None and promo_price:
-            price_per_unit = promo_price
-        elif price_per_unit is None and original_price:
-            price_per_unit = original_price
+        deal_quantity = promo.get("deal_quantity")
+        is_meerdere_artikels = promo.get("is_meerdere_artikels", False)
 
         quantity = row["quantity"]
-        line_total = round(price_per_unit * quantity, 2) if price_per_unit else None
+        has_promo = row.get("has_promo", False)
 
-        # Besparing per stuk
+        # Bereken line_total, price_per_unit en savings correct op basis van promotietype
+        line_total = None
         savings_per_unit = None
-        if row.get("has_promo") and original_price and promo_price:
-            savings_per_unit = round(original_price - promo_price, 2)
+
+        if has_promo and original_price and promo_price:
+            if is_meerdere_artikels and deal_quantity and deal_quantity > 1:
+                # "2e aan -X% vanaf Y st" type:
+                # Elke complete groep van `deal_quantity` items kost allemaal `promo_price` per stuk.
+                # Items buiten een complete groep kosten `original_price`.
+                complete_groups = quantity // deal_quantity
+                remaining = quantity % deal_quantity
+                line_total = round(
+                    complete_groups * deal_quantity * promo_price
+                    + remaining * original_price,
+                    2
+                )
+                # price_per_unit: promo_price als alle items in complete groepen zitten, anders origineel
+                price_per_unit = promo_price if (complete_groups > 0 and remaining == 0) else original_price
+                # Totale besparing gedeeld door quantity zodat frontend (savings_per_unit * quantity) klopt
+                total_savings = complete_groups * deal_quantity * (original_price - promo_price)
+                savings_per_unit = round(total_savings / quantity, 4) if quantity > 0 else 0
+            else:
+                # Gewone korting: elke unit aan promo prijs
+                price_per_unit = promo_price
+                line_total = round(promo_price * quantity, 2)
+                savings_per_unit = round(original_price - promo_price, 2)
+        else:
+            price_per_unit = original_price
+            if original_price:
+                line_total = round(original_price * quantity, 2)
 
         items_with_names.append({
             "item_id": row["item_id"],
@@ -126,14 +147,40 @@ def get_list_items_with_names(supabase: Client, list_id: str):
             "brand": product.get("brand"),
             "quantity": quantity,
             "is_checked": row["is_checked"],
-            "has_promo": row.get("has_promo", False),
+            "has_promo": has_promo,
             "price_per_unit": price_per_unit,
             "original_price": original_price,
             "promo_price": promo_price,
             "line_total": line_total,
             "savings_per_unit": savings_per_unit,
             "discount_label": promo.get("discount_percentage"),
-            "deal_quantity": promo.get("deal_quantity"),
+            "deal_quantity": deal_quantity,
         })
 
     return items_with_names
+
+
+def recalculate_list_totals(supabase: Client, list_id: str):
+    """
+    Herbereken estimated_total_price en estimated_savings voor een shopping list
+    en sla ze op in de shopping_lists tabel.
+    Houdt rekening met 'meerdere artikels' promoties (bv. 2e aan -25%).
+    """
+    items = get_list_items_with_names(supabase, list_id)
+
+    total_price = 0.0
+    total_savings = 0.0
+
+    for item in items:
+        line_total = item.get("line_total") or 0.0
+        savings_per_unit = item.get("savings_per_unit") or 0.0
+        quantity = item.get("quantity", 1)
+
+        total_price += line_total
+        # savings_per_unit is al berekend als total_savings / quantity (zie get_list_items_with_names)
+        total_savings += savings_per_unit * quantity
+
+    supabase.table("shopping_lists").update({
+        "estimated_total_price": round(total_price, 2),
+        "estimated_savings": round(total_savings, 2),
+    }).eq("list_id", list_id).execute()

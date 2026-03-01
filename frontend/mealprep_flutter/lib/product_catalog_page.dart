@@ -1075,7 +1075,7 @@ class _AddToListSheetState extends State<_AddToListSheet> {
         quantity: _quantity,
         hasPromo: _hasPromo,
         promoId: _hasPromo ? p['promo_id']?.toString() : null,
-        pricePerUnit: promoPrice ?? originalPrice,
+        pricePerUnit: originalPrice,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -1398,8 +1398,30 @@ class _AddToListSheetState extends State<_AddToListSheet> {
                 alignment: Alignment.centerRight,
                 child: Text(
                   () {
-                    final unitPrice = double.tryParse((promoPrice ?? price).toString()) ?? 0;
-                    return '$_quantity × €${unitPrice.toStringAsFixed(2)} = €${(unitPrice * _quantity).toStringAsFixed(2)}';
+                    final op = double.tryParse((originalPrice ?? price ?? promoPrice).toString()) ?? 0;
+                    final pp = promoPrice != null ? (double.tryParse(promoPrice.toString()) ?? op) : op;
+                    final isMeerdere = widget.product['is_meerdere_artikels'] == true;
+
+                    if (_hasPromo && isMeerdere && _dealQuantity > 1) {
+                      final completeGroups = _quantity ~/ _dealQuantity;
+                      final remaining = _quantity % _dealQuantity;
+                      final total = completeGroups * _dealQuantity * pp + remaining * op;
+
+                      if (completeGroups == 0) {
+                        // Promo telt nog niet mee: toon originele prijs
+                        return '$_quantity × €${op.toStringAsFixed(2)} = €${total.toStringAsFixed(2)}';
+                      } else if (remaining == 0) {
+                        // Alle items in complete groepen: toon promo prijs per stuk
+                        return '$_quantity × €${pp.toStringAsFixed(2)} = €${total.toStringAsFixed(2)}';
+                      } else {
+                        // Gemengd (bv. 3 bij deal van 2): toon alleen totaal
+                        return 'Totaal: €${total.toStringAsFixed(2)}';
+                      }
+                    } else if (_hasPromo) {
+                      return '$_quantity × €${pp.toStringAsFixed(2)} = €${(pp * _quantity).toStringAsFixed(2)}';
+                    } else {
+                      return '$_quantity × €${op.toStringAsFixed(2)} = €${(op * _quantity).toStringAsFixed(2)}';
+                    }
                   }(),
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),

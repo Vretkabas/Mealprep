@@ -15,6 +15,63 @@ router = APIRouter()
 
 # ==================== HELPER FUNCTIONS ====================
 
+async def _recalculate_list_totals_async(conn, list_id: str):
+    """
+    Herbereken estimated_total_price en estimated_savings voor een shopping list
+    via een asyncpg connectie. Houdt rekening met 'meerdere artikels' promoties.
+    """
+    items = await conn.fetch("""
+        SELECT
+            sli.quantity,
+            sli.has_promo,
+            COALESCE(pr.original_price, p.price) AS original_price,
+            pr.promo_price,
+            pr.deal_quantity,
+            pr.is_meerdere_artikels
+        FROM shopping_list_items sli
+        LEFT JOIN products p ON sli.product_id = p.product_id
+        LEFT JOIN promotions pr ON sli.promo_id = pr.promo_id AND sli.has_promo = true
+        WHERE sli.list_id = $1::uuid
+    """, list_id)
+
+    total_price = 0.0
+    total_savings = 0.0
+
+    for item in items:
+        quantity = item['quantity'] or 1
+        has_promo = item['has_promo']
+        original_price = float(item['original_price'] or 0)
+        promo_price = float(item['promo_price']) if item['promo_price'] is not None else None
+        deal_quantity = item['deal_quantity']
+        is_meerdere_artikels = item['is_meerdere_artikels']
+
+        if has_promo and original_price and promo_price:
+            if is_meerdere_artikels and deal_quantity and deal_quantity > 1:
+                complete_groups = quantity // deal_quantity
+                remaining = quantity % deal_quantity
+                line_total = complete_groups * deal_quantity * promo_price + remaining * original_price
+                item_savings = complete_groups * deal_quantity * (original_price - promo_price)
+            else:
+                line_total = promo_price * quantity
+                item_savings = (original_price - promo_price) * quantity
+        elif original_price:
+            line_total = original_price * quantity
+            item_savings = 0.0
+        else:
+            line_total = 0.0
+            item_savings = 0.0
+
+        total_price += line_total
+        total_savings += item_savings
+
+    await conn.execute("""
+        UPDATE shopping_lists
+        SET estimated_total_price = $1,
+            estimated_savings = $2
+        WHERE list_id = $3::uuid
+    """, round(total_price, 2), round(total_savings, 2), list_id)
+
+
 def parse_deal_info(discount: str) -> tuple:
     """
     Fallback: parse discount string to (is_meerdere_artikels, deal_quantity).
@@ -288,6 +345,9 @@ async def add_to_shopping_list(req: AddToCartRequest, user_id: str = Depends(get
                     item_id, req.list_id, req.product_id, req.quantity,
                     req.has_promo, req.promo_id, req.price_per_unit
                 )
+        # Herbereken totalen voor de lijst
+        await _recalculate_list_totals_async(conn, req.list_id)
+
         return {"message": "Product succesvol toegevoegd aan lijst"}
     except HTTPException:
         raise
