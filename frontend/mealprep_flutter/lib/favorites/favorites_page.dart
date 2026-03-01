@@ -153,7 +153,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                   child: Image.network(
                                     imageUrl,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => _placeholderIcon(),
+                                    errorBuilder: (_, _, _) => _placeholderIcon(),
                                   ),
                                 ),
                               ),

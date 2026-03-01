@@ -332,7 +332,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                 title: const Text('🌿 Alleen gezonde producten'),
                 value: tempHealthy,
                 onChanged: (v) => setModal(() => tempHealthy = v),
-                activeColor: brandGreen,
+                activeThumbColor: brandGreen,
                 contentPadding: EdgeInsets.zero,
               ),
               SwitchListTile(
@@ -340,7 +340,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                 subtitle: const Text('1+1 GRATIS, 2+1, 6+6...', style: TextStyle(fontSize: 12)),
                 value: tempMultiItem,
                 onChanged: (v) => setModal(() => tempMultiItem = v),
-                activeColor: brandGreen,
+                activeThumbColor: brandGreen,
                 contentPadding: EdgeInsets.zero,
               ),
               const SizedBox(height: 20),
@@ -648,7 +648,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               itemCount: _kCategories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
                 final cat = _kCategories[i];
                 final selected = _selectedCategory == cat['key'];

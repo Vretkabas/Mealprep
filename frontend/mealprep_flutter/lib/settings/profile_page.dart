@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,6 +17,10 @@ class _ProfilePageState extends State<ProfilePage> {
   String _email = 'Loading...';
   String _displayName = 'User';
   
+  // Merk kleuren
+  final Color brandGreen = const Color(0xFF00BFA5);
+  final Color darkBlue = const Color(0xFF2C4A5E);
+
   // Standaard taal instellen
   String _currentLanguage = 'English';
 
@@ -45,12 +48,13 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showLanguagePicker() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -58,7 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 "Select Language",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 16),
               _buildLanguageOption("English", "🇬🇧"),
               _buildLanguageOption("Nederlands", "🇳🇱"),
               _buildLanguageOption("Français", "🇫🇷"),
@@ -78,10 +82,10 @@ class _ProfilePageState extends State<ProfilePage> {
         language,
         style: TextStyle(
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? Colors.blueAccent : Colors.black,
+          color: isSelected ? brandGreen : Colors.black87,
         ),
       ),
-      trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blueAccent) : null,
+      trailing: isSelected ? Icon(Icons.check_circle, color: brandGreen) : null,
       onTap: () {
         setState(() {
           _currentLanguage = language;
@@ -89,7 +93,11 @@ class _ProfilePageState extends State<ProfilePage> {
         Navigator.pop(context);
         
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Language changed to $language'), duration: const Duration(seconds: 1)),
+          SnackBar(
+            content: Text('Language changed to $language'),
+            duration: const Duration(seconds: 1),
+            backgroundColor: darkBlue,
+          ),
         );
       },
     );
@@ -99,19 +107,20 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showProfilePictureOptions() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (_avatarUrl == null)
                 ListTile(
-                  leading: const Icon(Icons.add_a_photo, color: Colors.blueAccent),
-                  title: const Text("Add Profile Picture"),
+                  leading: Icon(Icons.add_a_photo, color: brandGreen),
+                  title: const Text("Add Profile Picture", style: TextStyle(fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _uploadProfilePicture();
@@ -119,8 +128,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               if (_avatarUrl != null)
                 ListTile(
-                  leading: const Icon(Icons.photo_camera, color: Colors.blueAccent),
-                  title: const Text("Update Profile Picture"),
+                  leading: Icon(Icons.photo_camera, color: brandGreen),
+                  title: const Text("Update Profile Picture", style: TextStyle(fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _uploadProfilePicture();
@@ -128,8 +137,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               if (_avatarUrl != null)
                 ListTile(
-                  leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text("Delete Profile Picture", style: TextStyle(color: Colors.red)),
+                  leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                  title: const Text("Delete Profile Picture", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _deleteProfilePicture();
@@ -168,7 +177,6 @@ class _ProfilePageState extends State<ProfilePage> {
         UserAttributes(data: {'avatar_url': publicUrl}),
       );
 
-      // Met een unieke timestamp forceren we de UI om de nieuwe foto in te laden als de URL hetzelfde blijft
       setState(() {
         _avatarUrl = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
       });
@@ -176,7 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -192,11 +200,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (user == null) return;
 
       final String path = '/${user.id}/profile.jpg';
-
-      // Verwijder de foto uit Supabase Storage
       await supabase.storage.from('avatars').remove([path]);
-
-      // Update auth metadata zodat avatar_url weer leeg is
       await supabase.auth.updateUser(
         UserAttributes(data: {'avatar_url': null}),
       );
@@ -207,13 +211,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture successfully deleted')),
+          SnackBar(content: const Text('Profile picture successfully deleted'), backgroundColor: brandGreen),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting profile picture: $e')),
+          SnackBar(content: Text('Error deleting profile picture: $e'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -231,7 +235,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error signing out: $e')),
+          SnackBar(content: Text('Error signing out: $e'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -241,56 +245,62 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _navigateToProfileSettings() {
     Navigator.push(context, MaterialPageRoute(
-    builder: (_) => const EditProfilePage(initialIndex: 0),
+      builder: (_) => const EditProfilePage(initialIndex: 0),
     ));
   }
 
   void _navigateToDietPreferences() {
     Navigator.push(context, MaterialPageRoute(
-    builder: (_) => const EditProfilePage(initialIndex: 1),
+      builder: (_) => const EditProfilePage(initialIndex: 1),
     ));
   }
 
   void _navigateToOtherTab() {
     Navigator.push(context, MaterialPageRoute(
-    builder: (_) => const EditProfilePage(initialIndex: 2),
+      builder: (_) => const EditProfilePage(initialIndex: 2),
     ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[50], // Neutrale lichte achtergrond
       appBar: AppBar(
-        title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22, color: Colors.black87)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: _isLoading && _email == 'Loading...'
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: brandGreen))
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              physics: const BouncingScrollPhysics(),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
+                  // --- PROFILE HEADER ---
                   GestureDetector(
-                    // GEWIJZIGD: Roept nu het keuzemenu aan in plaats van direct uploaden
                     onTap: _showProfilePictureOptions,
                     child: Stack(
                       children: [
                         Container(
-                          width: 120,
-                          height: 120,
+                          width: 110,
+                          height: 110,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.blueAccent.withOpacity(0.5), width: 3),
+                            border: Border.all(color: brandGreen.withOpacity(0.3), width: 3),
                             color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(color: brandGreen.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
+                            ],
                           ),
                           child: ClipOval(
                             child: _avatarUrl != null
                                 ? Image.network(_avatarUrl!, fit: BoxFit.cover, key: ValueKey(_avatarUrl))
-                                : const Icon(Icons.person, size: 80, color: Colors.grey),
+                                : Icon(Icons.person, size: 60, color: Colors.grey.shade400),
                           ),
                         ),
                         Positioned(
@@ -298,87 +308,165 @@ class _ProfilePageState extends State<ProfilePage> {
                           right: 0,
                           child: Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            decoration: BoxDecoration(
+                              color: brandGreen,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 15),
-                  Text(_displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text(_email, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                  const SizedBox(height: 30),
-                  
-                  _buildSectionTitle("Account"),
-                  _buildListTile(Icons.account_circle, "Profile Settings", hasArrow: true, onTap: _navigateToProfileSettings),
-                  _buildListTile(Icons.lock, "Password", hasArrow: true, onTap: _navigateToOtherTab),
-                  _buildListTile(Icons.delete, "Delete Account", hasArrow: true, onTap: _navigateToOtherTab),
-
                   const SizedBox(height: 20),
-                  _buildSectionTitle("Preferences"),
-                  _buildListTile(Icons.restaurant, "Diet & Allergens", hasArrow: true, onTap: _navigateToDietPreferences),
-                  _buildListTile(Icons.favorite, "Health Goals", hasArrow: true, onTap: _navigateToDietPreferences),
-
-                  const SizedBox(height: 20),
-                  _buildSectionTitle("App Settings"),
-                  _buildListTile(Icons.notifications, "Notifications", hasArrow: true , onTap: _navigateToOtherTab),
-                  
-                  _buildListTile(
-                    Icons.language, 
-                    "Language", 
-                    subtitle: _currentLanguage,
-                    hasArrow: true, 
-                    onTap: _showLanguagePicker
+                  Text(
+                    _displayName, 
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.black87),
                   ),
-                  
-                  _buildListTile(Icons.privacy_tip, "Privacy", hasArrow: true),
-                  
+                  const SizedBox(height: 4),
+                  Text(
+                    _email, 
+                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
                   const SizedBox(height: 40),
+
+                  // --- MENU ITEMS ---
+                  _buildSectionTitle("Account"),
+                  _buildSectionContainer([
+                    _buildListTile(Icons.person_outline, "Profile Settings", hasArrow: true, onTap: _navigateToProfileSettings),
+                    _buildDivider(),
+                    _buildListTile(Icons.lock_outline, "Password", hasArrow: true, onTap: _navigateToOtherTab),
+                    _buildDivider(),
+                    _buildListTile(Icons.delete_outline, "Delete Account", hasArrow: true, iconColor: Colors.redAccent, textColor: Colors.redAccent, onTap: _navigateToOtherTab),
+                  ]),
+
+                  const SizedBox(height: 24),
+                  _buildSectionTitle("Preferences"),
+                  _buildSectionContainer([
+                    _buildListTile(Icons.restaurant_menu, "Diet & Allergens", hasArrow: true, onTap: _navigateToDietPreferences),
+                    _buildDivider(),
+                    _buildListTile(Icons.favorite_outline, "Health Goals", hasArrow: true, onTap: _navigateToDietPreferences),
+                  ]),
+
+                  const SizedBox(height: 24),
+                  _buildSectionTitle("App Settings"),
+                  _buildSectionContainer([
+                    _buildListTile(Icons.notifications_none, "Notifications", hasArrow: true, onTap: _navigateToOtherTab),
+                    _buildDivider(),
+                    _buildListTile(
+                      Icons.language, 
+                      "Language", 
+                      subtitle: _currentLanguage,
+                      hasArrow: true, 
+                      onTap: _showLanguagePicker
+                    ),
+                    _buildDivider(),
+                    _buildListTile(Icons.shield_outlined, "Privacy", hasArrow: true),
+                  ]),
+
+                  const SizedBox(height: 40),
+                  
+                  // --- LOGOUT KNOP ---
                   SizedBox(
                     width: double.infinity,
-                    height: 55,
-                    child: OutlinedButton(
+                    height: 56,
+                    child: ElevatedButton(
                       onPressed: _signOut,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        foregroundColor: Colors.red,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        foregroundColor: Colors.redAccent,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
-                      child: const Text("Logout", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text("Logout", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
     );
   }
 
+  // Titel voor elke categorie (Account, Settings, etc.)
   Widget _buildSectionTitle(String title) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 10, left: 5),
-        child: Text(title, style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 14)),
+        padding: const EdgeInsets.only(bottom: 12, left: 8),
+        child: Text(
+          title.toUpperCase(), 
+          style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 1.2),
+        ),
       ),
     );
   }
 
-  Widget _buildListTile(IconData icon, String title, {String? subtitle, bool hasArrow = false, VoidCallback? onTap}) {
+  // Witte kaart rondom een groep menu items (iOS stijl)
+  Widget _buildSectionContainer(List<Widget> children) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.blueAccent),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-        subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.blueAccent)) : null,
-        trailing: hasArrow ? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey) : null,
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  // De divider tussen de opties in één blok
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 56, right: 16),
+      child: Divider(height: 1, color: Colors.grey.shade100, thickness: 1),
+    );
+  }
+
+  // Het individuele lijst item, nu zonder eigen witte achtergrond
+  Widget _buildListTile(IconData icon, String title, {String? subtitle, bool hasArrow = false, VoidCallback? onTap, Color? iconColor, Color? textColor}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(20), // Voorkomt lelijke klik-hoeken
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (iconColor ?? brandGreen).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor ?? brandGreen, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title, 
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: textColor ?? Colors.black87),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                    ],
+                  ],
+                ),
+              ),
+              if (hasArrow) 
+                Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
       ),
     );
   }
