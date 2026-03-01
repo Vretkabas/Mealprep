@@ -762,6 +762,13 @@ async def get_promotions(store_name: Optional[str] = None):
             store = await db.get_store_by_name(store_name)
             if store:
                 store_id = store["store_id"]
+            else:
+                # if shop doesnt exist in db ==> no promotions to show, return empty list
+                return {
+                    "status": "success",
+                    "total": 0,
+                    "promotions": []
+                }
 
         promotions = await db.get_active_promotions(store_id)
 
