@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
 import 'package:mealprep_flutter/screens/product_screen.dart';
@@ -22,12 +23,18 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
   List<Map<String, dynamic>> _items = [];
   final TextEditingController _barcodeController = TextEditingController();
   bool _isLoading = true;
-  final Set<String> _selectedItemIds = {};
+  final Set<String> _selectedItemIds = <String>{};
+  final Set<String> _loadingItemIds = <String>{};
 
   // Styling
   final Color brandGreen = const Color(0xFF00BFA5);
   final Color textDark = const Color(0xFF345069);
   final Color bgGrey = const Color(0xFFF5F7F9);
+
+  String get _apiBaseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081';
+  }
 
   @override
   void initState() {
@@ -109,7 +116,10 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
 
   Future<void> _toggleCheckedSelected() async {
     final allChecked = _selectedItemIds.every((id) {
-      final item = _items.firstWhere((i) => i['item_id'] == id);
+      final item = _items.firstWhere(
+        (i) => i['item_id']?.toString() == id,
+        orElse: () => <String, dynamic>{},
+      );
       return item['is_checked'] == true;
     });
     try {
@@ -463,13 +473,20 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
   // ── Item kaart ─────────────────────────────────────────────────────────────
 
   Widget _buildItemCard(Map<String, dynamic> item) {
-    final itemId = item['item_id'] as String;
+    final itemId = item['item_id']?.toString() ?? '';
     final isSelected = _selectedItemIds.contains(itemId);
-    final isChecked = item['is_checked'] ?? false;
-    final productName = item['product_name'] ?? 'Onbekend';
-    final brand = item['brand'];
-    final quantity = item['quantity'] ?? 1;
+    final isChecked = item['is_checked'] == true;
+    final isLoadingNav = _loadingItemIds.contains(itemId);
+    final productName = item['product_name']?.toString() ?? 'Onbekend';
+    final brand = item['brand']?.toString();
+    final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
     final hasPromo = item['has_promo'] == true;
+    final rawImageUrl = item['image_url']?.toString();
+    final imageUrl = rawImageUrl != null
+        ? '$_apiBaseUrl/proxy/image?url=${Uri.encodeQueryComponent(rawImageUrl)}'
+        : null;
+    final barcode = item['barcode']?.toString();
+
     final pricePerUnit = item['price_per_unit'] != null
         ? (item['price_per_unit'] is num
             ? (item['price_per_unit'] as num).toDouble()
@@ -485,19 +502,33 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
             ? (item['line_total'] as num).toDouble()
             : double.tryParse(item['line_total'].toString()))
         : null;
-    final discountLabel = item['discount_label'];
+    final discountLabel = item['discount_label']?.toString();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
-        onTap: () {
-          if (item['barcode'] != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProductScreen(barcode: item['barcode']),
+        onTap: () async {
+          if (barcode == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Geen barcode beschikbaar voor dit product'),
+                duration: Duration(seconds: 2),
               ),
             );
+            return;
+          }
+          setState(() => _loadingItemIds.add(itemId));
+          try {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductScreen(barcode: barcode),
+              ),
+            );
+            // Herlaad items na terugkeer (product kan gewijzigd zijn)
+            if (mounted) await _loadItems();
+          } finally {
+            if (mounted) setState(() => _loadingItemIds.remove(itemId));
           }
         },
         onLongPress: () => _toggleSelection(itemId),
@@ -523,7 +554,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // Checkbox / selectie
+                // ── Checkbox / selectie ──
                 GestureDetector(
                   onTap: () => _toggleSelection(itemId),
                   child: AnimatedContainer(
@@ -553,9 +584,41 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                         : null,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
-                // Product info
+                // ── Product afbeelding ──
+                SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: isLoadingNav
+                        ? Container(
+                            color: Colors.grey.shade100,
+                            child: Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: brandGreen,
+                                ),
+                              ),
+                            ),
+                          )
+                        : imageUrl != null
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) =>
+                                    _buildImagePlaceholder(isChecked),
+                              )
+                            : _buildImagePlaceholder(isChecked),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // ── Product info ──
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,16 +632,21 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                           decoration:
                               isChecked ? TextDecoration.lineThrough : null,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Row(
                         children: [
                           if (brand != null)
-                            Text('$brand · ',
+                            Flexible(
+                              child: Text(
+                                '$brand · ',
                                 style: TextStyle(
-                                    color: Colors.grey[500], fontSize: 11)),
+                                    color: Colors.grey[500], fontSize: 11),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           GestureDetector(
                             onTap: () => _editQuantity(itemId, quantity),
                             child: Text(
@@ -592,32 +660,33 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                               ),
                             ),
                           ),
-                          if (hasPromo && discountLabel != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                discountLabel,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
+                      if (hasPromo && discountLabel != null) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade600,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            discountLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
 
-                // Prijs rechts
+                // ── Prijs rechts ──
+                const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -627,7 +696,11 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
-                          color: isChecked ? Colors.grey : textDark,
+                          color: isChecked
+                              ? Colors.grey
+                              : hasPromo
+                                  ? Colors.green.shade700
+                                  : textDark,
                         ),
                       ),
                     if (pricePerUnit != null && quantity > 1)
@@ -635,7 +708,10 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                         '€${pricePerUnit.toStringAsFixed(2)}/st',
                         style: TextStyle(color: Colors.grey[500], fontSize: 10),
                       ),
-                    if (hasPromo && originalPrice != null && pricePerUnit != null && originalPrice > pricePerUnit)
+                    if (hasPromo &&
+                        originalPrice != null &&
+                        pricePerUnit != null &&
+                        originalPrice > pricePerUnit)
                       Text(
                         '€${originalPrice.toStringAsFixed(2)}',
                         style: TextStyle(
@@ -654,11 +730,25 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
     );
   }
 
+  Widget _buildImagePlaceholder(bool isChecked) {
+    return Container(
+      color: Colors.grey.shade100,
+      child: Icon(
+        Icons.shopping_basket_outlined,
+        size: 26,
+        color: isChecked ? Colors.grey.shade300 : Colors.grey.shade400,
+      ),
+    );
+  }
+
   // ── Selectie actie balk ────────────────────────────────────────────────────
 
   Widget _buildSelectionBar() {
     final allChecked = _selectedItemIds.every((id) {
-      final item = _items.firstWhere((i) => i['item_id'] == id);
+      final item = _items.firstWhere(
+        (i) => i['item_id']?.toString() == id,
+        orElse: () => <String, dynamic>{},
+      );
       return item['is_checked'] == true;
     });
 

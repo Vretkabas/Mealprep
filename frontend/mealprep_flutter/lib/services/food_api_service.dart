@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FoodApiService {
-  static const String baseUrl = 'http://10.0.2.2:8081'; // voor Android emulator (localhost voor ios gebruiken)
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081'; // Android emulator
+  }
 
   static Future<Map<String, dynamic>> fetchByBarcode(
     String barcode, {

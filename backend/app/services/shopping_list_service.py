@@ -28,6 +28,11 @@ def get_or_create_product(supabase: Client, barcode: str) -> str | None:
 
     existing = get_product_id_by_barcode(supabase, match.barcode)
     if existing:
+        # Update image_url als die nog ontbreekt
+        if match.image_url:
+            supabase.table("products").update({
+                "image_url": match.image_url,
+            }).eq("product_id", existing).is_("image_url", "null").execute()
         return existing
 
     result = supabase.table("products").upsert({
@@ -40,6 +45,7 @@ def get_or_create_product(supabase: Client, barcode: str) -> str | None:
         "carbohydrates_g": match.carbohydrates_100g,
         "fat_g": match.fat_100g,
         "sugars_g": match.sugars_100g,
+        "image_url": match.image_url,
     }, on_conflict="barcode").execute()
 
     if result.data:
@@ -145,6 +151,7 @@ def get_list_items_with_names(supabase: Client, list_id: str):
             "product_name": product.get("product_name", "Onbekend"),
             "barcode": product.get("barcode"),
             "brand": product.get("brand"),
+            "image_url": product.get("image_url"),
             "quantity": quantity,
             "is_checked": row["is_checked"],
             "has_promo": has_promo,

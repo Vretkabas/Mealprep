@@ -5,8 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SuggestionService {
   static String get _baseUrl {
-    if (kIsWeb) return 'http://localhost:8000';
-    return 'http://10.0.2.2:8000'; // Android emulator
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081'; // Android emulator
   }
 
   static Future<Map<String, dynamic>> getPromotionSuggestions({

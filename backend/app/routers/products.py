@@ -345,8 +345,9 @@ async def add_to_shopping_list(req: AddToCartRequest, user_id: str = Depends(get
                     item_id, req.list_id, req.product_id, req.quantity,
                     req.has_promo, req.promo_id, req.price_per_unit
                 )
-        # Herbereken totalen voor de lijst
-        await _recalculate_list_totals_async(conn, req.list_id)
+
+            # Herbereken totalen voor de lijst (binnen async with block)
+            await _recalculate_list_totals_async(conn, req.list_id)
 
         return {"message": "Product succesvol toegevoegd aan lijst"}
     except HTTPException:
@@ -598,7 +599,8 @@ async def upload_colruyt_products(batch: ColruytBatchUpload):
                         proteins_g=match.proteins_100g,
                         carbohydrates_g=match.carbohydrates_100g,
                         sugars_g=match.sugars_100g,
-                        fat_g=match.fat_100g
+                        fat_g=match.fat_100g,
+                        image_url=match.image_url,
                     )
 
                     await db.create_promotion(
