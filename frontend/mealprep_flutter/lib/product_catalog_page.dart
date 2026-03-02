@@ -863,7 +863,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                     width: double.infinity,
                     child: imageUrl != null
                         ? Image.network(imageUrl, fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
                         : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
                   ),
@@ -954,7 +954,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                 width: double.infinity,
                 child: imageUrl != null
                     ? Image.network(imageUrl, fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) =>
+                        errorBuilder: (_, _, _) =>
                             const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
                     : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
               ),
@@ -1195,7 +1195,7 @@ class _AddToListSheetState extends State<_AddToListSheet> {
                     color: Colors.grey[100],
                     child: imageUrl != null
                         ? Image.network(imageUrl, fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 const Center(child: Icon(Icons.image, size: 36, color: Colors.grey)))
                         : const Center(child: Icon(Icons.image, size: 36, color: Colors.grey)),
                   ),
@@ -1652,7 +1652,7 @@ class _CatalogSuggestionsSheet extends StatelessWidget {
               child: ListView.separated(
                 controller: controller,
                 itemCount: suggestions.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (_, index) {
                   final s = suggestions[index] as Map<String, dynamic>;
                   final isPromotion = s['is_promotion'] ?? (s['discount_label'] != null);

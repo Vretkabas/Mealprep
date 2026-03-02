@@ -237,7 +237,7 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
                               Row(
                                 children: [
                                   Text(
-                                    '€${(totalPrice as num).toStringAsFixed(2)}',
+                                    '€${(totalPrice).toStringAsFixed(2)}',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -264,7 +264,7 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
                                               color: Colors.green.shade700),
                                           const SizedBox(width: 3),
                                           Text(
-                                            '-€${(totalSavings as num).toStringAsFixed(2)}',
+                                            '-€${(totalSavings).toStringAsFixed(2)}',
                                             style: TextStyle(
                                               fontSize: 11,
                                               color: Colors.green.shade700,

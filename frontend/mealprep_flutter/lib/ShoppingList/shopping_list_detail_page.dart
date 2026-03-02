@@ -610,7 +610,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                             ? Image.network(
                                 imageUrl,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) =>
+                                errorBuilder: (_, _, _) =>
                                     _buildImagePlaceholder(isChecked),
                               )
                             : _buildImagePlaceholder(isChecked),
@@ -957,7 +957,7 @@ class _SuggestionsSheet extends StatelessWidget {
               child: ListView.separated(
                 controller: controller,
                 itemCount: suggestions.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (_, index) {
                   final s = suggestions[index] as Map<String, dynamic>;
                   return ListTile(

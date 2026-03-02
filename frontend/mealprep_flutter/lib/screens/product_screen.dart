@@ -22,60 +22,69 @@ class _ProductScreenState extends State<ProductScreen> {
     super.initState();
     _fetchProduct();
   }
-Future<void> _showAddToListSheet() async {
-  try {
-    final lists = await ShoppingListService.getUserLists();
 
-    if (!mounted) return;
+  Future<void> _showAddToListSheet() async {
+    try {
+      final lists = await ShoppingListService.getUserLists();
+      if (!mounted) return;
 
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        if (lists.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text("Geen lijsten gevonden"),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: lists.length,
-          itemBuilder: (context, index) {
-            final list = lists[index];
-
-            return ListTile(
-              title: Text(list['list_name']),
-              onTap: () async {
-                Navigator.pop(context);
-
-                await ShoppingListService.addItemByBarcode(
-                  listId: list['list_id'],
-                  barcode: widget.barcode,
-                );
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Product toegevoegd aan lijst"),
-                  ),
-                );
-              },
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          if (lists.isEmpty) {
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text("Geen lijsten gevonden", textAlign: TextAlign.center),
             );
-          },
-        );
-      },
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Fout: $e")),
-    );
+          }
+
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Kies een lijst", 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: lists.length,
+                    itemBuilder: (context, index) {
+                      final list = lists[index];
+                      return ListTile(
+                        leading: const Icon(Icons.list_alt, color: Color(0xFF24966D)),
+                        title: Text(list['list_name']),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          await ShoppingListService.addItemByBarcode(
+                            listId: list['list_id'],
+                            barcode: widget.barcode,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Product toegevoegd!")),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fout: $e")));
+    }
   }
-}
 
   Future<void> _fetchProduct() async {
     try {
-      // Backend haalt product op en scanned log
       final data = await FoodApiService.fetchByBarcode(widget.barcode);
-
       setState(() {
         product = data;
         loading = false;
@@ -92,114 +101,231 @@ Future<void> _showAddToListSheet() async {
   Widget build(BuildContext context) {
     if (loading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF24966D))),
       );
     }
 
     if (error != null) {
       return Scaffold(
-        body: Center(child: Text(error!)),
+        backgroundColor: Colors.white,
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.black)),
+        body: Center(child: Text(error!, style: const TextStyle(fontSize: 18, color: Colors.grey))),
       );
     }
 
     final nutriments = product!['nutriments'] ?? {};
-    // nutrients omzetten naar double
     double proteins = (nutriments['proteins'] ?? 0).toDouble();
     double carbs = (nutriments['carbohydrates'] ?? 0).toDouble();
     double fat = (nutriments['fat'] ?? 0).toDouble();
     double sugars = (nutriments['sugars'] ?? 0).toDouble();
     double salt = (nutriments['salt'] ?? 0).toDouble();
-
-    double total = proteins + carbs + fat + sugars + salt;
+    double total = proteins + carbs + fat;
 
     return Scaffold(
-      appBar: AppBar(title: Text(product!['name'] ?? 'Onbekend product')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Barcode: ${product!['barcode']}'),
-            Text('Merken: ${product!['brands'] ?? 'Onbekend'}'),
-            const SizedBox(height: 16),
-            const Text(
-              'Voedingswaarden per 100g:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Energie: ${nutriments['energy_kcal'] ?? '-'} kcal',
-              style: const TextStyle(color: Colors.red),
-            ),
-            Text(
-              'Eiwitten: ${nutriments['proteins'] ?? '-'} g',
-              style: const TextStyle(color: Colors.green),
-            ),
-            Text(
-              'Koolhydraten: ${nutriments['carbohydrates'] ?? '-'} g',
-              style: const TextStyle(color: Colors.orange),
-            ),
-            Text(
-              'Vetten: ${nutriments['fat'] ?? '-'} g',
-              style: const TextStyle(color: Colors.purple),
-            ),
-            Text(
-              'Suikers: ${nutriments['sugars'] ?? '-'} g',
-              style: const TextStyle(color: Colors.blue),
-            ),
-            Text(
-              'Zout: ${nutriments['salt'] ?? '-'} g',
-              style: const TextStyle(color: Colors.pink),
-            ),
-            const SizedBox(height: 24),
+      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text("Product Details", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: Stack(
+        children: [
+          // Decoratieve achtergrond elementen
+          Positioned(
+            top: -50,
+            right: -50,
+            child: CircleAvatar(radius: 100, backgroundColor: const Color(0xFF24966D).withOpacity(0.05)),
+          ),
+          Positioned(
+            bottom: 100,
+            left: -30,
+            child: CircleAvatar(radius: 60, backgroundColor: const Color(0xFF24966D).withOpacity(0.03)),
+          ),
+          
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Header Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.fastfood_rounded, size: 50, color: Color(0xFF24966D)),
+                        const SizedBox(height: 15),
+                        Text(
+                          product!['name'] ?? 'Onbekend product',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          product!['brands'] ?? 'Merk onbekend',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ),
+                        const Divider(height: 30),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.qr_code_scanner, size: 16, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(product!['barcode'], style: const TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
-            if (total > 0)
-              SizedBox(
-                height: 260,
-                child: PieChart(
-                  PieChartData(
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
-                    sections: [
-                      _pieSection(proteins, total, Colors.green),
-                      _pieSection(carbs, total, Colors.orange),
-                      _pieSection(fat, total, Colors.purple),
-                      _pieSection(sugars, total, Colors.blue),
-                      _pieSection(salt, total, Colors.pink),
+                  const SizedBox(height: 30),
+                  const Text("Voedingswaarden per 100g", 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 15),
+
+                  // Nutrition Grid
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.5,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    children: [
+                      _buildNutriTile("Energie", "${nutriments['energy_kcal'] ?? '-'} kcal", Icons.bolt, Colors.orange),
+                      _buildNutriTile("Eiwitten", "${proteins}g", Icons.fitness_center, Colors.green),
+                      _buildNutriTile("Koolhydraten", "${carbs}g", Icons.bakery_dining, Colors.blue),
+                      _buildNutriTile("Vetten", "${fat}g", Icons.opacity, Colors.purple),
+                      _buildNutriTile("Suikers", "${sugars}g", Icons.cake, Colors.red),
+                      _buildNutriTile("Zout", "${salt}g", Icons.science, Colors.blueGrey),
                     ],
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 24),
+                  const SizedBox(height: 30),
 
-              ElevatedButton.icon(
-                onPressed: _showAddToListSheet,
-                icon: const Icon(Icons.playlist_add),
-                label: const Text("Toevoegen aan lijst"),
+                  // Chart Section
+                  if (total > 0) ...[
+                    const Text("Macro Verdeling", 
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 200,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: PieChart(
+                              PieChartData(
+                                sectionsSpace: 4,
+                                centerSpaceRadius: 35,
+                                sections: [
+                                  _pieSection(proteins, total, Colors.green, "Eiwit"),
+                                  _pieSection(carbs, total, Colors.blue, "Koolh."),
+                                  _pieSection(fat, total, Colors.purple, "Vet"),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildLegend(Colors.green, "Eiwitten"),
+                                _buildLegend(Colors.blue, "Koolhydraten"),
+                                _buildLegend(Colors.purple, "Vetten"),
+                              ],
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 100), // Ruimte voor de knop
+                ],
               ),
-          ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        width: double.infinity,
+        height: 60,
+        child: ElevatedButton.icon(
+          onPressed: _showAddToListSheet,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF24966D),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            elevation: 5,
+          ),
+          icon: const Icon(Icons.playlist_add),
+          label: const Text("TOEVOEGEN AAN LIJST", 
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         ),
       ),
     );
   }
-  }
 
-  PieChartSectionData _pieSection(
-    double value,
-    double total,
-    Color color,
-  ) {
-    final percentage = (value / total) * 100;
-
-    return PieChartSectionData(
-      color: color,
-      value: value,
-      title: '${percentage.toStringAsFixed(1)}%',
-      radius: 60,
-      titleStyle: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
+  Widget _buildNutriTile(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildLegend(Color color, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+        ],
+      ),
+    );
+  }
+
+  PieChartSectionData _pieSection(double value, double total, Color color, String title) {
+    final double percentage = (value / total) * 100;
+    return PieChartSectionData(
+      color: color,
+      value: value,
+      title: percentage > 10 ? '${percentage.toStringAsFixed(0)}%' : '',
+      radius: 50,
+      titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+    );
+  }
+}
