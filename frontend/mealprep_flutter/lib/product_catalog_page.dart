@@ -996,17 +996,52 @@ void _toggleFavorite(Map<String, dynamic> product) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              child: SizedBox(
-                height: 110,
-                width: double.infinity,
-                child: imageUrl != null
-                    ? Image.network(imageUrl, fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) =>
-                            const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)))
-                    : const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
-              ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                  child: SizedBox(
+                    height: 110,
+                    width: double.infinity,
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const Center(
+                              child: Icon(Icons.image, size: 40, color: Colors.grey),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.image, size: 40, color: Colors.grey),
+                          ),
+                  ),
+                ),
+
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => _toggleFavorite(product),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black12, blurRadius: 4),
+                        ],
+                      ),
+                      child: Icon(
+                        _favorites.contains(product['product_id']?.toString())
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: const Color.fromARGB(255, 255, 0, 0),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(8),
