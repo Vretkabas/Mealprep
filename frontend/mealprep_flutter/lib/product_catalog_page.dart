@@ -52,6 +52,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   int _promoDisplayLimit = 25;
   int _searchDisplayLimit = 50;
   final TextEditingController _searchController = TextEditingController();
+  final Set<String> _favorites = {};
 
   // --- FILTER STATE ---
   String? _selectedCategory;
@@ -189,6 +190,33 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
     }
   }
 
+void _toggleFavorite(Map<String, dynamic> product) {
+  final id = product['product_id']?.toString() ?? '';
+  if (id.isEmpty) return;
+  setState(() {
+    if (_favorites.contains(id)) {
+      _favorites.remove(id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Verwijderd uit favorieten'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      _favorites.add(id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Toegevoegd aan favorieten!'),
+          backgroundColor: const Color(0xFF00BFA5),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  });
+}
   Future<void> _searchProducts(String query) async {
     if (query.isEmpty) {
       setState(() {
@@ -889,6 +917,27 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
                       child: const Icon(Icons.eco, color: Colors.white, size: 12),
                     ),
                   ),
+                Positioned(
+                  bottom: 8, right: 8,
+                  child: GestureDetector(
+                    onTap: () => _toggleFavorite(promo),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      ),
+                      child: Icon(
+                        _favorites.contains(promo['product_id']?.toString())
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: const Color.fromARGB(255, 255, 0, 0),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
             Padding(
