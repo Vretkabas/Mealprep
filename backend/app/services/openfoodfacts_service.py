@@ -1,5 +1,6 @@
 from email.header import Header
 import sqlite3
+import httpx
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
@@ -8,6 +9,8 @@ from supabase import create_client, Client
 from fastapi import Header
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "openfoodfacts.db"
+
+OPENFOODFACTS_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
 # Supabase client initialiseren
 try:
@@ -125,6 +128,53 @@ def log_scan_to_supabase(
         return {"logged": False, "reason": "error", "error": str(e)}
 
 
+def fetch_product_from_api(barcode: str) -> dict | None:
+    """
+    Haalt productdata op van de OpenFoodFacts API als fallback.
+    """
+    try:
+        url = OPENFOODFACTS_API_URL.format(barcode=barcode)
+        headers = {
+            "User-Agent": "NutriScanApp/1.0 (contact@example.com)"  # verplicht door OFF API policy
+        }
+
+        response = httpx.get(url, headers=headers, timeout=5.0)
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("status") != 1 or "product" not in data:
+            print(f"Product {barcode} niet gevonden in OpenFoodFacts API")
+            return None
+
+        p = data["product"]
+        nutriments = p.get("nutriments", {})
+
+        product = {
+            "barcode": barcode,
+            "name": p.get("product_name") or p.get("product_name_en") or None,
+            "brands": p.get("brands") or None,
+            "source": "openfoodfacts_api",
+            "nutriments": {
+                "energy_kcal": nutriments.get("energy-kcal_100g"),
+                "proteins": nutriments.get("proteins_100g"),
+                "carbohydrates": nutriments.get("carbohydrates_100g"),
+                "fat": nutriments.get("fat_100g"),
+                "sugars": nutriments.get("sugars_100g"),
+                "salt": nutriments.get("salt_100g"),
+            },
+        }
+
+        print(f"Product {barcode} opgehaald via OpenFoodFacts API")
+        return product
+
+    except httpx.HTTPStatusError as e:
+        print(f"HTTP fout bij OpenFoodFacts API voor {barcode}: {e}")
+        return None
+    except Exception as e:
+        print(f"Onverwachte fout bij OpenFoodFacts API voor {barcode}: {e}")
+        return None
+
+
 def get_product_by_barcode(
     barcode: str,
     user_id: str,
@@ -158,24 +208,30 @@ def get_product_by_barcode(
         row = cursor.fetchone()
         conn.close()
  
-        if not row:
+        if row:
+            product = {
+                "barcode": row["barcode"],
+                "name": row["product_name"],
+                "brands": row["brands"],
+                "source": "local_db",
+                "nutriments": {
+                    "energy_kcal": row["energy_kcal_100g"],
+                    "proteins": row["proteins_100g"],
+                    "carbohydrates": row["carbohydrates_100g"],
+                    "fat": row["fat_100g"],
+                    "sugars": row["sugars_100g"],
+                    "salt": row["salt_100g"],
+                },
+            }
+        else:
+            # Niet gevonden in DB = probeer de OpenFoodFacts API
+            print(f"Barcode {barcode} niet gevonden in lokale DB, fallback naar API...")
+            product = fetch_product_from_api(barcode)
+
+        if not product:
             return None
 
-        product = {
-            "barcode": row["barcode"],
-            "name": row["product_name"],
-            "brands": row["brands"],
-            "nutriments": {
-                "energy_kcal": row["energy_kcal_100g"],
-                "proteins": row["proteins_100g"],
-                "carbohydrates": row["carbohydrates_100g"],
-                "fat": row["fat_100g"],
-                "sugars": row["sugars_100g"],
-                "salt": row["salt_100g"],
-            },
-        }
-        
-        # Log de scan naar Supabase in achtergrond, falen blokkeert product niet
+        # Log de scan naar Supabase falen blokkeert product niet
         if log_scan:
             scan_result = log_scan_to_supabase(
                 barcode, 
