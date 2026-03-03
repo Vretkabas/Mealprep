@@ -14,14 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="MealPrep API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # voor development
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-# include products router
+# CORS wordt afgehandeld door nginx (zie nginx/nginx.conf)
+# Geen CORSMiddleware hier om dubbele headers te voorkomen
+
+# include routers
 app.include_router(products.router)
 app.include_router(shopping_lists.router)
 app.include_router(barcode_api.router)
