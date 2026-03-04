@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ScannedItemService {
   // backend url
-  static const String baseUrl = 'http://10.0.2.2:8000'; 
+  static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081'; 
   
   Future<void> logScan({
     required String barcode,

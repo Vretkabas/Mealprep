@@ -3,8 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mealprep_flutter/quick_setup/quick_setup_data.dart';
 import '../home_page.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class QuickSetupPage4 extends StatefulWidget {
   const QuickSetupPage4({super.key});
@@ -78,14 +78,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
     final userId = Supabase.instance.client.auth.currentUser!.id;
 
     // Determine base URL
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:8081';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:8081';
-    } else {
-      baseUrl = 'http://localhost:8081';
-    }
+    final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081';
 
     try {
       final response = await Dio().post(

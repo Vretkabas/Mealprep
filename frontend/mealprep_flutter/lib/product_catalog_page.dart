@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'ShoppingList/shopping_list_page.dart';
 import 'ShoppingList/shopping_list_detail_page.dart';
@@ -74,9 +74,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   final Color backgroundGrey = const Color(0xFFF5F7F9);
 
   String get _baseUrl {
-    if (kIsWeb) return 'http://localhost:8081';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8081';
-    return 'http://localhost:8081';
+    return dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081';
   }
 
   // ── Computed: filtered + sorted list ────────────────────────────────────────

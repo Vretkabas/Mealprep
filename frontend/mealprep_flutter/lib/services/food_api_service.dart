@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FoodApiService {
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:8081';
-    return 'http://10.0.2.2:8081'; // Android emulator
+    return dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081';
   }
 
   static Future<Map<String, dynamic>> fetchByBarcode(

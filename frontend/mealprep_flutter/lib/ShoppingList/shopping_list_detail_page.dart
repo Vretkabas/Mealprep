@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
 import 'package:mealprep_flutter/screens/product_screen.dart';
 import '../services/suggestion_service.dart';
@@ -32,8 +33,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
   final Color bgGrey = const Color(0xFFF5F7F9);
 
   String get _apiBaseUrl {
-    if (kIsWeb) return 'http://localhost:8081';
-    return 'http://10.0.2.2:8081';
+    return dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081';
   }
 
   @override

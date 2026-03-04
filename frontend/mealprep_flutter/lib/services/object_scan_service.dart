@@ -1,15 +1,8 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 String _getBaseUrl() {
-  if (kIsWeb) {
-    return 'http://localhost:8081';
-  } else if (Platform.isAndroid) {
-    return 'http://10.0.2.2:8081';
-  } else {
-    return 'http://localhost:8081';
-  }
+  return dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081';
 }
 
 class ObjectScanService {
