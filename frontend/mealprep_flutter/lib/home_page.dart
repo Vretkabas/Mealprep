@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
   double _totalSaved = 0.0;
   bool _loadingStats = true;
 
-  int _selectedIndex = 0; // 0 = Home
+  final int _selectedIndex = 0; // 0 = Home
 
   // Kleuren
   final Color brandGreen = const Color(0xFF00BFA5);
@@ -93,7 +93,7 @@ Future<void> _fetchUserData() async {
               ),
               const SizedBox(height: 5),
               Text(
-                "How are you shopping today?",
+                "Hoe gaat het vandaag met winkelen?",
                 style: TextStyle(fontSize: 14, color: textDark.withOpacity(0.6)),
               ),
               const SizedBox(height: 30),
@@ -102,8 +102,8 @@ Future<void> _fetchUserData() async {
               
               // 1. In Store (Groen)
               _buildActionCard(
-                title: "In Store",
-                subtitle: "Scan products now",
+                title: "In de winkel",
+                subtitle: "Scan producten nu",
                 icon: Icons.camera_alt_outlined,
                 color: brandGreen,
                 textColor: Colors.white,
@@ -118,7 +118,7 @@ Future<void> _fetchUserData() async {
               // 2. Planning (Wit)
               _buildActionCard(
                 title: "Planning",
-                subtitle: "Browse deals from home",
+                subtitle: "Blader door deals vanaf huis",
                 icon: Icons.assignment_outlined,
                 color: Colors.white,
                 textColor: textDark,
@@ -133,8 +133,8 @@ Future<void> _fetchUserData() async {
 
               // 3. My Lists (Wit)
               _buildActionCard(
-                title: "My Lists",
-                subtitle: "View your shopping lists",
+                title: "Mijn Lijsten",
+                subtitle: "Bekijk uw boodschaplijsten",
                 icon: Icons.checklist_rtl_sharp,
                 color: Colors.white,
                 textColor: textDark,
@@ -149,7 +149,7 @@ Future<void> _fetchUserData() async {
 
               // --- STATS SECTIE (THIS WEEK) ---
               Text(
-                "THIS WEEK",
+                "DEZE WEEK",
                 style: TextStyle(
                   fontSize: 16, 
                   fontWeight: FontWeight.w900, 

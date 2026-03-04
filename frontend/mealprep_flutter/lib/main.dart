@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -23,14 +21,7 @@ import 'favorites/favorites_page.dart';
 // Setup Dio
 // ===============================
 final dioProvider = Provider<Dio>((ref) {
-  String baseUrl;
-  if (kIsWeb) {
-    baseUrl = 'http://localhost:8081';
-  } else if (Platform.isAndroid) {
-    baseUrl = 'http://10.0.2.2:8081'; 
-  } else {
-    baseUrl = 'http://localhost:8081';  
-  }
+  final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:8081';
 
   return Dio(
     BaseOptions(

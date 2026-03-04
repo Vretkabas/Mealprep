@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Zorg dat deze paden kloppen met jouw mappenstructuur
-import '../barcode_scanner/barcode_scanner_screen.dart';
-import '../ShoppingList/shopping_list_page.dart';
 import 'package:mealprep_flutter/navbar.dart'; 
 
 class EditProfilePage extends StatefulWidget {
@@ -177,7 +175,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveChanges() async {
     if (_selectedTabIndex == 1 && _totalMacro.toInt() != 100) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Macro distribution must total exactly 100%.'), backgroundColor: Colors.redAccent),
+        const SnackBar(content: Text('De macroverdeling moet precies 100% bedragen.'), backgroundColor: Colors.redAccent),
       );
       return;
     }
@@ -224,9 +222,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'dietary_type': dietaryType,
       }, onConflict: 'user_id');
 
-      if (mounted) _showSuccessDialog("Saved", "All your changes have been successfully saved.");
+      if (mounted) _showSuccessDialog("Opgeslagen", "Al uw wijzigingen zijn succesvol opgeslagen.");
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Opslaan mislukt: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -241,7 +239,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Change Password", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Wijzig Wachtwoord", style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -249,7 +247,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               controller: newPassController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: "New password",
+                labelText: "Nieuw wachtwoord",
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -258,7 +256,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               controller: confirmPassController,
               obscureText: true,
               decoration: InputDecoration(
-                labelText: "Confirm password",
+                labelText: "Bevestig wachtwoord",
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -267,19 +265,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text("Annuleren"),
           ),
           TextButton(
             onPressed: () async {
               if (newPassController.text != confirmPassController.text) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Passwords don't match")),
+                  const SnackBar(content: Text("Wachtwoorden komen niet overeen")),
                 );
                 return;
               }
               if (newPassController.text.length < 6) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Password must be at least 6 characters")),
+                  const SnackBar(content: Text("Wachtwoord moet minstens 6 tekens bevatten")),
                 );
                 return;
               }
@@ -289,17 +287,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 );
                 if (mounted) {
                   Navigator.pop(context);
-                  _showSuccessDialog("Password Updated", "Your password has been changed successfully.");
+                  _showSuccessDialog("Wachtwoord bijgewerkt", "Uw wachtwoord is succesvol gewijzigd.");
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error: $e")),
+                    SnackBar(content: Text("Fout: $e")),
                   );
                 }
               }
             },
-            child: const Text("Save", style: TextStyle(color: Color(0xFF1B8C61), fontWeight: FontWeight.bold)),
+            child: const Text("Opslaan", style: TextStyle(color: Color(0xFF1B8C61), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -318,11 +316,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete Account"),
-        content: const Text("Are you sure? This action cannot be undone."),
+        title: const Text("Account verwijderen"),
+        content: const Text("Bent u zeker? Deze actie kan niet worden teruggedraaid."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Annuleren")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Verwijderen", style: TextStyle(color: Colors.red))),
         ],
       ),
     ) ?? false;
@@ -333,7 +331,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await supabase.auth.signOut();
       if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verwijderen mislukt: $e')));
     }
   }
 
@@ -361,7 +359,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Settings", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        title: const Text("Instellingen", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -381,9 +379,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
                     child: Row(
                       children: [
-                        _buildTab("Profile", 0),
-                        _buildTab("Nutrition", 1),
-                        _buildTab("Other", 2),
+                        _buildTab("Profiel", 0),
+                        _buildTab("Voeding", 1),
+                        _buildTab("Overig", 2),
                       ],
                     ),
                   ),
@@ -410,7 +408,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         elevation: 0,
                       ),
-                      child: const Text("Save Changes", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text("Wijzigingen Opslaan", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
@@ -448,23 +446,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ),
         const SizedBox(height: 25),
-        const Align(alignment: Alignment.centerLeft, child: Text("Basic Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        const Align(alignment: Alignment.centerLeft, child: Text("Basis Informatie", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
         const SizedBox(height: 15),
-        _buildLabel("Name"),
-        _buildTextField(_nameController, "Name"),
+        _buildLabel("Naam"),
+        _buildTextField(_nameController, "Naam"),
         _buildLabel("Email"),
         _buildTextField(_emailController, "Email", readOnly: true),
         Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Age"), _buildTextField(_ageController, "20", isNumber: true)])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Leeftijd"), _buildTextField(_ageController, "20", isNumber: true)])),
           const SizedBox(width: 15),
           Expanded(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel("Gender"),
+        _buildLabel("Geslacht"),
         _buildDropdown(
           value: _selectedGender,
-          hint: "Gender",
+          hint: "Geslacht",
           items: _genderOptions.map((o) => DropdownMenuItem(
             value: o['value'],
             child: Text(o['label']!),
@@ -479,17 +477,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
   ),
         ]),
         const SizedBox(height: 20),
-        const Align(alignment: Alignment.centerLeft, child: Text("Body Measurements", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        const Align(alignment: Alignment.centerLeft, child: Text("Lichaamsmaten", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
         const SizedBox(height: 15),
         Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Height (cm)"), _buildTextField(_heightController, "180", isNumber: true)])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Hoogte (cm)"), _buildTextField(_heightController, "180", isNumber: true)])),
           const SizedBox(width: 15),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Weight (kg)"), _buildTextField(_weightController, "75", isNumber: true)])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Gewicht (kg)"), _buildTextField(_weightController, "75", isNumber: true)])),
         ]),
-        _buildLabel("Goal"),
+        _buildLabel("Doel"),
         _buildDropdown(
           value: _selectedGoal,
-          hint: "Select your goal",
+          hint: "Selecteer uw doel",
           items: _goalOptions.map((o) => DropdownMenuItem(
             value: o['value'],
             child: Text(o['label']!),
@@ -499,10 +497,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _calculateDailyCalories();
           }),
         ),
-        _buildLabel("Activity Level"),
+        _buildLabel("Activiteitsniveau"),
         _buildDropdown(
           value: _selectedActivity,
-          hint: "Select activity level",
+          hint: "Selecteer activiteitsniveau",
           items: _activityOptions.map((o) => DropdownMenuItem(
             value: o['value'],
             child: Column(
@@ -519,7 +517,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _calculateDailyCalories();
           }),
         ),
-        _buildLabel( "People to cook for"),
+        _buildLabel( "Mensen voor wie gekookt wordt"),
         _buildTextField(_peopleController, "2", isNumber: true),
       ],
     );
@@ -531,8 +529,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Dynamic Calorie Goal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        const Text("Automatically calculated from your profile", style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const Text("Dynamisch Calorie Doel", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Automatisch berekend op basis van uw profiel", style: TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 15),
         Container(
           width: double.infinity,
@@ -540,19 +538,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
           decoration: BoxDecoration(color: const Color(0xFFE0F2F1), borderRadius: BorderRadius.circular(15)),
           child: Column(children: [
             Text("$_dailyCalories", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-            const Text("kcal per day", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            const Text("kcal per dag", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ]),
         ),
         const SizedBox(height: 30),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text("Macro Distribution", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text("Macro Distributie", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Text("${_totalMacro.toInt()}%", style: TextStyle(color: isInvalid ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
         ]),
-        _buildMacroSlider("Carbs", Colors.blue, _carbPct, (val) => setState(() => _carbPct = val)),
-        _buildMacroSlider("Protein", Colors.orange, _proteinPct, (val) => setState(() => _proteinPct = val)),
-        _buildMacroSlider("Fats", Colors.red, _fatPct, (val) => setState(() => _fatPct = val)),
+        _buildMacroSlider("Koolhydraten", Colors.blue, _carbPct, (val) => setState(() => _carbPct = val)),
+        _buildMacroSlider("Proteïne", Colors.orange, _proteinPct, (val) => setState(() => _proteinPct = val)),
+        _buildMacroSlider("Vetten", Colors.red, _fatPct, (val) => setState(() => _fatPct = val)),
         const SizedBox(height: 30),
-        const Text("Dietary Restrictions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Dietetische Beperkingen", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 15),
         GridView.builder(
           shrinkWrap: true,
@@ -580,17 +578,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Notifications", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Meldingen", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 15),
-        _buildSwitchTile("Meal Reminders", "Get notified when it's time to eat", _mealReminders, (val) => setState(() => _mealReminders = val)),
-        _buildSwitchTile("Weekly Progress", "Weekly summary of your nutrition", _weeklyProgress, (val) => setState(() => _weeklyProgress = val)),
-        _buildSwitchTile("Shopping List", "Reminder to check your shopping list", _shoppingList, (val) => setState(() => _shoppingList = val)),
+        _buildSwitchTile("Maaltijdherinneringen", "Krijg een melding wanneer het tijd is om te eten", _mealReminders, (val) => setState(() => _mealReminders = val)),
+        _buildSwitchTile("Wekelijkse voortgang", "Wekelijks overzicht van uw voeding", _weeklyProgress, (val) => setState(() => _weeklyProgress = val)),
+        _buildSwitchTile("Shopping List", "Herinnering om uw boodschappenlijst te controleren", _shoppingList, (val) => setState(() => _shoppingList = val)),
         const SizedBox(height: 30),
         const Text("Account", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 15),
-        _buildAccountTile(Icons.lock_outline, "Change Password", _changePassword),
+        _buildAccountTile(Icons.lock_outline, "Wijzig Wachtwoord", _changePassword),
         _buildAccountTile(Icons.logout, "Log Out", _logOut, isDestructive: true),
-        _buildAccountTile(Icons.delete_outline, "Delete Account", _deleteAccount, isDestructive: true),
+        _buildAccountTile(Icons.delete_outline, "Verwijder Account", _deleteAccount, isDestructive: true),
       ],
     );
   }

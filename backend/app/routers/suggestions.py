@@ -22,6 +22,7 @@ class SuggestionItem(BaseModel):
     category: Optional[str] = None
     is_healthy: Optional[bool] = None
     is_promotion: Optional[bool] = None
+    product_id: Optional[str] = None
 
 
 class SuggestionResponse(BaseModel):

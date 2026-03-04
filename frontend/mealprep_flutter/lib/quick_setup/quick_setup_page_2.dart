@@ -109,7 +109,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 const SizedBox(height: 30),
 
                 Text(
-                  "Personal Info",
+                  "Personelijke info",
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -124,7 +124,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 // ============================================
                 // Input: Voor hoeveel personen koken?
                 // ============================================
-                _buildLabel("How many people do you want to cook for?", textDark),
+                _buildLabel("Hoeveel personen wil je koken?", textDark),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -152,31 +152,31 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 // Inputs (Age, Height, Weight)
                 // ============================================
                 // Age
-                _buildLabel("Age", textDark),
+                _buildLabel("Leeftijd", textDark),
                 const SizedBox(height: 8),
                 _buildDropdownField<int>(
                   value: _age,
                   items: _generateRange(16, 99),
-                  hint: "Select age",
+                  hint: "Selecteer leeftijd",
                   onChanged: (val) => setState(() => _age = val),
                 ),
 
                 const SizedBox(height: 16),
 
                 // Height
-                _buildLabel("Height (cm)", textDark),
+                _buildLabel("Hoogte (cm)", textDark),
                 const SizedBox(height: 8),
                 _buildDropdownField<int>(
                   value: _height,
                   items: _generateRange(140, 230),
-                  hint: "Select height",
+                  hint: "Selecteer hoogte",
                   onChanged: (val) => setState(() => _height = val),
                 ),
 
                 const SizedBox(height: 16),
 
                 // Current Weight
-                _buildLabel("Current weight (kg)", textDark),
+                _buildLabel("Huidige gewicht (kg)", textDark),
                 const SizedBox(height: 8),
                 _buildNumberInput(
                   hint: "80", 
@@ -186,7 +186,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 const SizedBox(height: 16),
 
                 // Desired Weight
-                _buildLabel("Desired weight (kg)", textDark),
+                _buildLabel("Gewenst gewicht (kg)", textDark),
                 const SizedBox(height: 8),
                 _buildNumberInput(
                   hint: "75", 
@@ -204,8 +204,8 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildGenderCard("Man", Icons.face, _selectedGender == "Man"),
-                    _buildGenderCard("Woman", Icons.face_3, _selectedGender == "Woman"),
-                    _buildGenderCard("Other", Icons.question_mark, _selectedGender == "Prefer not to say"),
+                    _buildGenderCard("Vrouw", Icons.face_3, _selectedGender == "Vrouw"),
+                    _buildGenderCard("Anders", Icons.question_mark, _selectedGender == "Liever niet zeggen"),
                   ],
                 ),
 
@@ -227,11 +227,11 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                     children: [
                       CheckboxListTile(
                         title: const Text(
-                          "I consent to the processing of my health data (weight, height, age) in order to generate a suitable nutrition plan.",
+                          "Ik geef toestemming voor de verwerking van mijn gezondheidsgegevens (gewicht, lengte, leeftijd) om een geschikt voedingsplan op te stellen.",
                           style: TextStyle(fontSize: 12),
                         ),
                         subtitle: const Text(
-                          "Your data is securely stored and only used for this purpose.",
+                          "Uw gegevens worden veilig opgeslagen en alleen gebruikt voor dit doel.",
                           style: TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                         activeColor: brandGreen,
@@ -251,7 +251,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              "Consent is required for this app.",
+                              "Toestemming is vereist voor deze app.",
                               style: TextStyle(color: Colors.red, fontSize: 12),
                             ),
                           ),
@@ -279,7 +279,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                       elevation: 3,
                     ),
                     child: const Text(
-                      "Next",
+                      "Volgende",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -335,7 +335,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedGender = label == "Other" ? "Prefer not to say" : label;
+          _selectedGender = label == "Anders" ? "Liever niet zeggen" : label;
         });
       },
       child: Container(

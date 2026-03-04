@@ -28,7 +28,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please provide GDPR consent to proceed."),
+          content: Text("Geef toestemming voor de GDPR om door te gaan."),
           backgroundColor: Colors.red,
         ),
       );
@@ -38,7 +38,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
     // 2. Selectie Check
     if (_selectedActivityLevel != null) {
       print("Gekozen activiteit: $_selectedActivityLevel");
-      print("GDPR Consent (Activity): $_gdprConsent");
+      print("GDPR toestemming (Activity): $_gdprConsent");
 
       // Data saved in Object
       final data = ModalRoute.of(context)!.settings.arguments as QuickSetupData;
@@ -46,7 +46,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
       Navigator.pushNamed(context, '/quick_setup_4', arguments: data);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Activity saved! (Ready for next step)")),
+        SnackBar(content: Text("Activiteit opgeslagen! (Klaar voor volgende stap)")),
       );
     } 
   }
@@ -85,7 +85,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
 
               // --- Titel & Afbeelding ---
               Text(
-                "How active are you?",
+                "Hoe actief bent u?",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark),
                 textAlign: TextAlign.center,
               ),
@@ -96,13 +96,13 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
               const SizedBox(height: 30),
 
               // --- Activiteit Opties ---
-              _buildActivityCard(0, "Low", "Almost no activity"),
+              _buildActivityCard(0, "Laag", "Bijna geen activiteit"),
               const SizedBox(height: 15),
-              _buildActivityCard(1, "Slightly active", "1-3 times sport a week"),
+              _buildActivityCard(1, "Een beetje actief", "1-3 keer per week sporten"),
               const SizedBox(height: 15),
-              _buildActivityCard(2, "Medium", "3-5 times sport a week"),
+              _buildActivityCard(2, "Medium", "3-5 keer per week sporten"),
               const SizedBox(height: 15),
-              _buildActivityCard(3, "Very active", "6-7 times sport a week"),
+              _buildActivityCard(3, "Zeer actief", "6-7 keer per week sporten"),
 
               const SizedBox(height: 30),
 
@@ -116,11 +116,11 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
                 ),
                 child: CheckboxListTile(
                   title: const Text(
-                    "I understand that my activity level is used to calculate my calorie needs.",
+                    "Ik begrijp dat mijn activiteitsniveau wordt gebruikt om mijn caloriebehoefte te berekenen.",
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   subtitle: const Text(
-                    "These data are processed in accordance with our strict privacy policy.",
+                    "Deze gegevens worden verwerkt in overeenstemming met onze strikte privacybeleid.",
                     style: TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                   activeColor: brandGreen,
@@ -150,7 +150,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     elevation: 5,
                   ),
-                  child: const Text("Next", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text("Volgende", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 40),

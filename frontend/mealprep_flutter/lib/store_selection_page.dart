@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'product_catalog_page.dart';
-import '../barcode_scanner/barcode_scanner_screen.dart';
-import '../../ShoppingList/shopping_list_page.dart';
-import 'package:mealprep_flutter/navbar.dart'; 
+import '../screens/barcode_scanner_screen.dart';
+import '../ShoppingList/shopping_list_page.dart';
 
 class StoreSelectionPage extends StatefulWidget {
   const StoreSelectionPage({super.key});
@@ -13,10 +12,33 @@ class StoreSelectionPage extends StatefulWidget {
 }
 
 class _StoreSelectionPageState extends State<StoreSelectionPage> {
-  final int _selectedIndex = 0;
+  int _selectedIndex = 0;
   final Color brandGreen = const Color(0xFF00BFA5);
   final Color darkBlue = const Color(0xFF2C4A5E); 
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0:
+        Navigator.pushNamed(context, '/home');
+        break;
+      case 1:
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()));
+        break;
+      case 2:
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListsPage()));
+        break;
+      case 3:
+        print("Navigeer naar Favorites");
+        break;
+      case 4:
+        Navigator.pushNamed(context, '/profile');
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,8 +133,7 @@ class _StoreSelectionPageState extends State<StoreSelectionPage> {
           ),
         ],
       ),
-       bottomNavigationBar: AppBottomNavBar(currentIndex: -1),
-     
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -183,5 +204,29 @@ class _StoreSelectionPageState extends State<StoreSelectionPage> {
     );
   }
 
-  
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.grey.shade100, width: 1)),
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: brandGreen,
+        unselectedItemColor: Colors.grey.shade400,
+        showUnselectedLabels: true,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), activeIcon: Icon(Icons.camera_alt), label: "Scan"),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt_rounded), activeIcon: Icon(Icons.list_alt_rounded), label: "Lijsten"),
+          BottomNavigationBarItem(icon: Icon(Icons.star_border_rounded), activeIcon: Icon(Icons.star_rounded), label: "Favorieten"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: "Profiel"),
+        ],
+      ),
+    );
+  }
 }
