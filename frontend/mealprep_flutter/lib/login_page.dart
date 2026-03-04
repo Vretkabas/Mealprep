@@ -78,12 +78,12 @@ class _LoginPageState extends State<LoginPage> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Forgot Password", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Wachtwoord vergeten", style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Enter your email and we'll send you a reset link.", style: TextStyle(color: Colors.grey)),
+            const Text("Voer uw e-mailadres in en wij sturen u een link om uw wachtwoord opnieuw in te stellen.", style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 16),
             TextField(
               controller: emailController,
@@ -99,14 +99,14 @@ class _LoginPageState extends State<LoginPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            child: const Text("Annuleren", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () async {
               final email = emailController.text.trim();
               if (email.isEmpty || !email.contains('@')) {
                 ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                  const SnackBar(content: Text("Please enter a valid email address.")),
+                  const SnackBar(content: Text("Voer een geldig e-mailadres in.")),
                 );
                 return;
               }
@@ -121,8 +121,8 @@ class _LoginPageState extends State<LoginPage> {
                     context: context,
                     builder: (successCtx) => AlertDialog(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      title: const Text("Email Sent"),
-                      content: Text("A reset link has been sent to $email.\nCheck your inbox (and spam folder)."),
+                      title: const Text("Email Verzonden"),
+                      content: Text("Een reset link is verstuurd naar $email.\nControleer uw inbox (en spam map)."),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(successCtx),
@@ -135,12 +135,12 @@ class _LoginPageState extends State<LoginPage> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                    SnackBar(content: Text("Error: $e")),
+                    SnackBar(content: Text("Fout: $e")),
                   );
                 }
               }
             },
-            child: const Text("Send", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("Sturen", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -224,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                       obscureText: true,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.lock_outline, color: darkBlue),
-                        hintText: "Password",
+                        hintText: "Wachtwoord",
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: darkBlue, width: 2),
                         ),
@@ -266,7 +266,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 20),
 
                     // Register button
-                    _buildSecondaryButton("Register", darkBlue, () {
+                    _buildSecondaryButton("Registreren", darkBlue, () {
                       Navigator.pushNamed(context, '/register');
                     }),
                     // Forgot password link
@@ -280,7 +280,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: SizedBox(
                           width: double.infinity,
                           child: Text(
-                            "Forgot your password?",
+                            "Wachtwoord vergeten?",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey[700],

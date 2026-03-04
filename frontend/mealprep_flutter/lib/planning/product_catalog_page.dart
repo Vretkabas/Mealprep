@@ -50,7 +50,7 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
   bool _isLoading = true;
   bool _isSearching = false;
   bool _showPromoOnly = true;
-  int _selectedIndex = 0;
+  final int _selectedIndex = 0;
   int _promoDisplayLimit = 25;
   int _searchDisplayLimit = 50;
   final TextEditingController _searchController = TextEditingController();

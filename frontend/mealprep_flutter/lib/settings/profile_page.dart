@@ -60,7 +60,7 @@ class _ProfilePageState extends State<ProfilePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "Select Language",
+                "Selecteer uw taal",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
@@ -121,7 +121,7 @@ class _ProfilePageState extends State<ProfilePage> {
               if (_avatarUrl == null)
                 ListTile(
                   leading: Icon(Icons.add_a_photo, color: brandGreen),
-                  title: const Text("Add Profile Picture", style: TextStyle(fontWeight: FontWeight.w500)),
+                  title: const Text("Voeg profielfoto toe", style: TextStyle(fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _uploadProfilePicture();
@@ -130,7 +130,7 @@ class _ProfilePageState extends State<ProfilePage> {
               if (_avatarUrl != null)
                 ListTile(
                   leading: Icon(Icons.photo_camera, color: brandGreen),
-                  title: const Text("Update Profile Picture", style: TextStyle(fontWeight: FontWeight.w500)),
+                  title: const Text("Update Profielfoto", style: TextStyle(fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _uploadProfilePicture();
@@ -139,7 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
               if (_avatarUrl != null)
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                  title: const Text("Delete Profile Picture", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500)),
+                  title: const Text("Verwijder Profielfoto", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500)),
                   onTap: () {
                     Navigator.pop(context);
                     _deleteProfilePicture();
@@ -185,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Upload mislukt: $e'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -212,13 +212,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Profile picture successfully deleted'), backgroundColor: brandGreen),
+          SnackBar(content: const Text('Profielfoto succesvol verwijderd'), backgroundColor: brandGreen),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting profile picture: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Fout bij het verwijderen van profielfoto: $e'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -236,7 +236,7 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error signing out: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Fout bij uitloggen: $e'), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -267,13 +267,13 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: Colors.grey[50], // Neutrale lichte achtergrond
       appBar: AppBar(
-        title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22, color: Colors.black87)),
+        title: const Text("Profiel", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22, color: Colors.black87)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
-      body: _isLoading && _email == 'Loading...'
+      body: _isLoading && _email == 'Laden...'
           ? Center(child: CircularProgressIndicator(color: brandGreen))
           : SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -335,29 +335,29 @@ class _ProfilePageState extends State<ProfilePage> {
                   // --- MENU ITEMS ---
                   _buildSectionTitle("Account"),
                   _buildSectionContainer([
-                    _buildListTile(Icons.person_outline, "Profile Settings", hasArrow: true, onTap: _navigateToProfileSettings),
+                    _buildListTile(Icons.person_outline, "Profiel Instellingen", hasArrow: true, onTap: _navigateToProfileSettings),
                     _buildDivider(),
-                    _buildListTile(Icons.lock_outline, "Password", hasArrow: true, onTap: _navigateToOtherTab),
+                    _buildListTile(Icons.lock_outline, "Wachtwoord", hasArrow: true, onTap: _navigateToOtherTab),
                     _buildDivider(),
-                    _buildListTile(Icons.delete_outline, "Delete Account", hasArrow: true, iconColor: Colors.redAccent, textColor: Colors.redAccent, onTap: _navigateToOtherTab),
+                    _buildListTile(Icons.delete_outline, "Account Verwijderen", hasArrow: true, iconColor: Colors.redAccent, textColor: Colors.redAccent, onTap: _navigateToOtherTab),
                   ]),
 
                   const SizedBox(height: 24),
-                  _buildSectionTitle("Preferences"),
+                  _buildSectionTitle("Voorkeuren"),
                   _buildSectionContainer([
-                    _buildListTile(Icons.restaurant_menu, "Diet & Allergens", hasArrow: true, onTap: _navigateToDietPreferences),
+                    _buildListTile(Icons.restaurant_menu, "Dieet & Allergenen", hasArrow: true, onTap: _navigateToDietPreferences),
                     _buildDivider(),
-                    _buildListTile(Icons.favorite_outline, "Health Goals", hasArrow: true, onTap: _navigateToDietPreferences),
+                    _buildListTile(Icons.favorite_outline, "Gezondheidsdoelen", hasArrow: true, onTap: _navigateToDietPreferences),
                   ]),
 
                   const SizedBox(height: 24),
-                  _buildSectionTitle("App Settings"),
+                  _buildSectionTitle("App Instellingen"),
                   _buildSectionContainer([
-                    _buildListTile(Icons.notifications_none, "Notifications", hasArrow: true, onTap: _navigateToOtherTab),
+                    _buildListTile(Icons.notifications_none, "Meldingen", hasArrow: true, onTap: _navigateToOtherTab),
                     _buildDivider(),
                     _buildListTile(
                       Icons.language, 
-                      "Language", 
+                      "Taal", 
                       subtitle: _currentLanguage,
                       hasArrow: true, 
                       onTap: _showLanguagePicker

@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mealprep_flutter/quick_setup/quick_setup_data.dart';
 import '../home_page.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class QuickSetupPage4 extends StatefulWidget {
@@ -38,13 +37,13 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
 
   void _handleSelection(String label) {
     setState(() {
-      if (label == 'None') {
+      if (label == 'Geen') {
         // Als 'None' wordt gekozen, wis alle andere selecties
         _selectedItems.clear();
-        _selectedItems.add('None');
+        _selectedItems.add('Geen');
       } else {
         // Als een specifieke allergie wordt gekozen, verwijder 'None'
-        _selectedItems.remove('None');
+        _selectedItems.remove('Geen');
         if (_selectedItems.contains(label)) {
           _selectedItems.remove(label);
         } else {
@@ -58,7 +57,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
     // Check of er iets gekozen is (minstens 1 allergie of 'None')
     if (_selectedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Select at least one allergy or preference, or choose 'None'."), backgroundColor: Colors.redAccent),
+        const SnackBar(content: Text("Selecteer ten minste één allergie of voorkeur, of kies 'Geen'."), backgroundColor: Colors.redAccent),
       );
       return;
     }
@@ -98,14 +97,14 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
         (route) => false,
       );
     } catch (e) {
-      print("Error sending preferences: $e");
+      print("Fout bij het verzenden van voorkeuren: $e");
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Error saving your preferences. Please try again."),
+          content: const Text("Er is een fout opgetreden bij het opslaan van uw voorkeuren. Probeer het opnieuw."),
           backgroundColor: Colors.redAccent,
           action: SnackBarAction(
-            label: "Retry",
+            label: "Opnieuw proberen",
             textColor: Colors.white,
             onPressed: _finishSetup,
           ),
@@ -140,7 +139,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
               ),
               const SizedBox(height: 30),
 
-              Text("Allergies & Preferences", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark)),
+              Text("Allergies & Voorkeuren", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark)),
               const SizedBox(height: 10),
               const Text("🥗", style: TextStyle(fontSize: 50)),
               const SizedBox(height: 20),
@@ -173,7 +172,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
                 ),
                 child: CheckboxListTile(
                   title: const Text(
-                    "I consent to the processing of my data.",
+                    "Ik geef toestemming voor de verwerking van mijn gegevens.",
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                   activeColor: brandGreen,
@@ -199,7 +198,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
                     backgroundColor: brandGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  child: const Text("Finish", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text("Voltooien", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 20),
@@ -226,7 +225,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
             Text(emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(height: 4),
             Text(
-              label == 'None' ? 'No Allergies' : label, 
+              label == 'Geen' ? 'Geen Allergieën' : label, 
               style: TextStyle(
                 fontWeight: FontWeight.bold, 
                 color: isSelected ? brandGreen : textDark,
