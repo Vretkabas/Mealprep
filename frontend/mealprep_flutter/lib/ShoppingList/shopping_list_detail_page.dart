@@ -264,13 +264,52 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
-        builder: (_) => _SuggestionsSheet(data: result),
+        builder: (_) => _SuggestionsSheet(
+          data: result,
+          brandGreen: brandGreen,
+          onAddSuggestion: (suggestion) {
+            _addSuggestionToList(suggestion);
+          },
+        ),
       );
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Fout: $e')),
+      );
+    }
+  }
+
+  Future<void> _addSuggestionToList(Map<String, dynamic> suggestion) async {
+    final productId = suggestion['product_id'];
+    final productName = suggestion['product_name'] ?? 'Product';
+
+    if (productId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kan $productName niet toevoegen (geen product ID)')),
+      );
+      return;
+    }
+
+    try {
+      await ShoppingListService.addItemByProductId(
+        listId: widget.listId,
+        productId: productId.toString(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$productName toegevoegd aan ${widget.listName}'),
+          backgroundColor: brandGreen,
+        ),
+      );
+      _loadItems(); // Refresh de lijst
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fout bij toevoegen: $e')),
       );
     }
   }
@@ -923,7 +962,14 @@ class _SuggestionsLoadingSheet extends StatelessWidget {
 
 class _SuggestionsSheet extends StatelessWidget {
   final Map<String, dynamic> data;
-  const _SuggestionsSheet({required this.data});
+  final Color brandGreen;
+  final void Function(Map<String, dynamic> suggestion)? onAddSuggestion;
+
+  const _SuggestionsSheet({
+    required this.data,
+    required this.brandGreen,
+    this.onAddSuggestion,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -994,32 +1040,48 @@ class _SuggestionsSheet extends StatelessWidget {
                     title: Text(s['product_name'] ?? ''),
                     subtitle: Text(s['reason'] ?? '',
                         style: const TextStyle(fontSize: 12)),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (s['discount_label'] != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              s['discount_label'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (s['discount_label'] != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  s['discount_label'],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
+                            if (s['promo_price'] != null)
+                              Text(
+                                '€${(s['promo_price'] as num).toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: brandGreen,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (onAddSuggestion != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.add_circle, color: brandGreen),
+                            onPressed: () => onAddSuggestion!(s),
+                            tooltip: 'Toevoegen aan lijst',
                           ),
-                        if (s['promo_price'] != null)
-                          Text(
-                            '€${(s['promo_price'] as num).toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                        ],
                       ],
                     ),
                   );

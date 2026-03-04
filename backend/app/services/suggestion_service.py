@@ -147,11 +147,22 @@ Antwoord UITSLUITEND in dit JSON formaat:
 
         result = json.loads(response.text)
 
-        # validation 
+        # validation
         if "suggestions" not in result:
             result["suggestions"] = []
         if "meal_tip" not in result:
             result["meal_tip"] = ""
+
+        # Match product_id from promotions to suggestions
+        promo_lookup = {
+            p.get("product_name", "").lower(): p
+            for p in promotions if p.get("product_id")
+        }
+        for suggestion in result["suggestions"]:
+            name = suggestion.get("product_name", "").lower()
+            match = promo_lookup.get(name)
+            if match:
+                suggestion["product_id"] = str(match["product_id"])
 
         return result
 
