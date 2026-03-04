@@ -289,8 +289,6 @@ class _ProductScreenState extends State<ProductScreen> {
                                   _pieSection(proteins, total, Colors.green, "Eiwit"),
                                   _pieSection(carbs, total, Colors.blue, "Koolh."),
                                   _pieSection(fat, total, Colors.purple, "Vet"),
-                                  _pieSection(sugars, total, Colors.red, "Suiker"),
-                                  _pieSection(salt, total, Colors.blueGrey, "Zout"),
                                 ],
                               ),
                             ),
@@ -303,8 +301,6 @@ class _ProductScreenState extends State<ProductScreen> {
                                 _buildLegend(Colors.green, "Eiwitten"),
                                 _buildLegend(Colors.blue, "Koolhydraten"),
                                 _buildLegend(Colors.purple, "Vetten"),
-                                _buildLegend(Colors.red, "Suikers"),
-                                _buildLegend(Colors.blueGrey, "Zout"),
                               ],
                             ),
                           )
