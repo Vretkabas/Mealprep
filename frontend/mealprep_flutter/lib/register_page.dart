@@ -142,13 +142,13 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 40),
 
               // Inputs
-              _buildTextField("Username", false, textDark, _usernameController),
+              _buildTextField("Gebruikersnaam", false, textDark, _usernameController),
               const SizedBox(height: 20),
               _buildTextField("Email", false, textDark, _emailController),
               const SizedBox(height: 20),
-              _buildTextField("Password", true, textDark, _passwordController),
+              _buildTextField("Wachtwoord", true, textDark, _passwordController),
               const SizedBox(height: 20),
-              _buildTextField("Confirm Password", true, textDark, _confirmPasswordController),
+              _buildTextField("Bevestig Wachtwoord", true, textDark, _confirmPasswordController),
 
               const SizedBox(height: 50),
 
@@ -164,7 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         height: 20, width: 20, 
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)
                       )
-                    : const Text("Register", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    : const Text("Registreren", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 40),

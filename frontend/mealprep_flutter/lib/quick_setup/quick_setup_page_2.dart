@@ -109,7 +109,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 const SizedBox(height: 30),
 
                 Text(
-                  "Personal Info",
+                  "Persoonlijke gegevens",
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -152,31 +152,31 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 // Inputs (Age, Height, Weight)
                 // ============================================
                 // Age
-                _buildLabel("Age", textDark),
+                _buildLabel("Leeftijd", textDark),
                 const SizedBox(height: 8),
                 _buildDropdownField<int>(
                   value: _age,
                   items: _generateRange(16, 99),
-                  hint: "Select age",
+                  hint: "Selecteer leeftijd",
                   onChanged: (val) => setState(() => _age = val),
                 ),
 
                 const SizedBox(height: 16),
 
                 // Height
-                _buildLabel("Height (cm)", textDark),
+                _buildLabel("Hoogte (cm)", textDark),
                 const SizedBox(height: 8),
                 _buildDropdownField<int>(
                   value: _height,
                   items: _generateRange(140, 230),
-                  hint: "Select height",
+                  hint: "Selecteer hoogte",
                   onChanged: (val) => setState(() => _height = val),
                 ),
 
                 const SizedBox(height: 16),
 
                 // Current Weight
-                _buildLabel("Current weight (kg)", textDark),
+                _buildLabel("Huidige gewicht (kg)", textDark),
                 const SizedBox(height: 8),
                 _buildNumberInput(
                   hint: "80", 
@@ -186,7 +186,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 const SizedBox(height: 16),
 
                 // Desired Weight
-                _buildLabel("Desired weight (kg)", textDark),
+                _buildLabel("Gewenst gewicht (kg)", textDark),
                 const SizedBox(height: 8),
                 _buildNumberInput(
                   hint: "75", 
@@ -198,14 +198,14 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                 // ============================================
                 // Gender Selection
                 // ============================================
-                _buildLabel("Gender", textDark),
+                _buildLabel("Geslacht", textDark),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildGenderCard("Man", Icons.face, _selectedGender == "Man"),
-                    _buildGenderCard("Woman", Icons.face_3, _selectedGender == "Woman"),
-                    _buildGenderCard("Other", Icons.question_mark, _selectedGender == "Prefer not to say"),
+                    _buildGenderCard("Vrouw", Icons.face_3, _selectedGender == "Vrouw"),
+                    _buildGenderCard("Overige", Icons.question_mark, _selectedGender == "Liever niet zeggen"),
                   ],
                 ),
 
@@ -279,7 +279,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
                       elevation: 3,
                     ),
                     child: const Text(
-                      "Next",
+                      "Volgende",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -335,7 +335,7 @@ class _QuickSetupPage2State extends State<QuickSetupPage2> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedGender = label == "Other" ? "Prefer not to say" : label;
+          _selectedGender = label == "Overige" ? "Liever niet zeggen" : label;
         });
       },
       child: Container(

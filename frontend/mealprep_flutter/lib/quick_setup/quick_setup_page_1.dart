@@ -52,7 +52,7 @@ class _QuickSetupPage1State extends State<QuickSetupPage1> {
 
               // --- TITEL & HERO ICON ---
               Text(
-                "What is your goal?",
+                "Wat is je doel?",
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -69,11 +69,11 @@ class _QuickSetupPage1State extends State<QuickSetupPage1> {
               const SizedBox(height: 40),
 
               // --- KEUZE OPTIES ---
-              _buildOptionCard(0, "Lose Weight", Icons.trending_down, Colors.redAccent),
+              _buildOptionCard(0, "Afvallen", Icons.trending_down, Colors.redAccent),
               const SizedBox(height: 15),
-              _buildOptionCard(1, "Maintain Weight", Icons.balance, Colors.orangeAccent),
+              _buildOptionCard(1, "Behouden", Icons.balance, Colors.orangeAccent),
               const SizedBox(height: 15),
-              _buildOptionCard(2, "Gain Weight", Icons.trending_up, Colors.green),
+              _buildOptionCard(2, "Toenemen", Icons.trending_up, Colors.green),
 
               const Spacer(),
 
@@ -100,7 +100,7 @@ class _QuickSetupPage1State extends State<QuickSetupPage1> {
                     elevation: 5,
                   ),
                   child: const Text(
-                    "Next",
+                    "Volgende",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ),

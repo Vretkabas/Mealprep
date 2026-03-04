@@ -14,9 +14,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Placeholder data (Later komt dit uit Supabase)
   String _userName = "John"; 
-  int _scansThisWeek = 12;
-  double _savedThisWeek = 45.00;
-  int _healthScore = 78;
+  final int _scansThisWeek = 12;
+  final double _savedThisWeek = 45.00;
+  final int _healthScore = 78;
 
   int _selectedIndex = 0; // 0 = Home
 
@@ -116,7 +116,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 5),
               Text(
-                "How are you shopping today?",
+                "Hoe gaat het vandaag? Klaar om te besparen en gezonder te eten?",
                 style: TextStyle(fontSize: 14, color: textDark.withOpacity(0.6)),
               ),
               const SizedBox(height: 30),
@@ -125,8 +125,8 @@ class _HomePageState extends State<HomePage> {
               
               // 1. In Store (Groen)
               _buildActionCard(
-                title: "In Store",
-                subtitle: "Scan products now",
+                title: "In de winkel",
+                subtitle: "Scan producten nu",
                 icon: Icons.camera_alt_outlined,
                 color: brandGreen,
                 textColor: Colors.white,
@@ -141,7 +141,7 @@ class _HomePageState extends State<HomePage> {
               // 2. Planning (Wit)
               _buildActionCard(
                 title: "Planning",
-                subtitle: "Browse deals from home",
+                subtitle: "Bekijk aanbiedingen vanuit huis",
                 icon: Icons.assignment_outlined,
                 color: Colors.white,
                 textColor: textDark,
@@ -156,8 +156,8 @@ class _HomePageState extends State<HomePage> {
 
               // 3. My Lists (Wit)
               _buildActionCard(
-                title: "My Lists",
-                subtitle: "View your shopping lists",
+                title: "Mijn Lijsten",
+                subtitle: "Bekijk je boodschaplijsten",
                 icon: Icons.checklist_rtl_sharp,
                 color: Colors.white,
                 textColor: textDark,
@@ -172,7 +172,7 @@ class _HomePageState extends State<HomePage> {
 
               // --- STATS SECTIE (THIS WEEK) ---
               Text(
-                "THIS WEEK",
+                "DEZE WEEK",
                 style: TextStyle(
                   fontSize: 16, 
                   fontWeight: FontWeight.w900, 
@@ -185,11 +185,11 @@ class _HomePageState extends State<HomePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildStatCard(_scansThisWeek.toString(), "scans", Colors.greenAccent.withOpacity(0.1), brandGreen),
+                  _buildStatCard(_scansThisWeek.toString(), "Scans", Colors.greenAccent.withOpacity(0.1), brandGreen),
                   const SizedBox(width: 12),
-                  _buildStatCard("€${_savedThisWeek.toInt()}", "saved", Colors.blueAccent.withOpacity(0.1), Colors.blue),
+                  _buildStatCard("€${_savedThisWeek.toInt()}", "Bespaard", Colors.blueAccent.withOpacity(0.1), Colors.blue),
                   const SizedBox(width: 12),
-                  _buildStatCard(_healthScore.toString(), "Health", Colors.purpleAccent.withOpacity(0.1), Colors.purple),
+                  _buildStatCard(_healthScore.toString(), "Gezondheid", Colors.purpleAccent.withOpacity(0.1), Colors.purple),
                 ],
               ),
               const SizedBox(height: 20),
@@ -210,9 +210,9 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), label: "Scan"),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
-          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lijsten"),
+          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorieten"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profiel"),
         ],
       ),
     );

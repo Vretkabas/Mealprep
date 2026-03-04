@@ -93,7 +93,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     double bmr;
     String gender = _genderController.text.toLowerCase();
-    if (gender.contains('male') || gender == 'man') {
+    if (gender.contains('man') || gender == 'man') {
       bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
     } else {
       bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
@@ -109,8 +109,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     int finalCals = tdee.round();
 
     String goal = _goalController.text.toLowerCase();
-    if (goal.contains('lose')) finalCals -= 500;
-    if (goal.contains('gain')) finalCals += 500;
+    if (goal.contains('verliezen')) finalCals -= 500;
+    if (goal.contains('opbouwen')) finalCals += 500;
 
     setState(() => _dailyCalories = finalCals);
   }
@@ -168,7 +168,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Future<void> _saveChanges() async {
     if (_selectedTabIndex == 1 && _totalMacro.toInt() != 100) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Macro distribution must total exactly 100%.'), backgroundColor: Colors.redAccent),
+        const SnackBar(content: Text('Macro distributie moet precies 100% zijn.'), backgroundColor: Colors.redAccent),
       );
       return;
     }
@@ -213,9 +213,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'dietary_type': dietaryType,
       }, onConflict: 'user_id');
 
-      if (mounted) _showSuccessDialog("Saved", "All your changes have been successfully saved.");
+      if (mounted) _showSuccessDialog("Opgeslagen", "Alle wijzigingen zijn succesvol opgeslagen.");
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Opslaan mislukt: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -227,10 +227,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final email = supabase.auth.currentUser?.email;
       if (email != null) {
         await supabase.auth.resetPasswordForEmail(email);
-        if (mounted) _showSuccessDialog("Email Sent", "Check your inbox for the password reset link.");
+        if (mounted) _showSuccessDialog("Email Verzonden", "Controleer je inbox voor de wachtwoordreset link.");
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fout: $e")));
     }
   }
 
@@ -243,11 +243,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Delete Account"),
-        content: const Text("Are you sure? This action cannot be undone."),
+        title: const Text("Account Verwijderen"),
+        content: const Text("Weet je het zeker? Deze actie kan niet worden teruggedraaid."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Annuleren", style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Verwijderen", style: TextStyle(color: Colors.red))),
         ],
       ),
     ) ?? false;
@@ -258,7 +258,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       await supabase.auth.signOut();
       if (mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verwijderen mislukt: $e')));
     }
   }
 
@@ -298,7 +298,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListsPage()));
         break;
       case 3:
-        print("Navigeer naar Favorites");
+        print("Navigeer naar Favorieten");
         // Navigator.pushNamed(context, '/favorites'); // Voeg toe als je de route hebt
         break;
       case 4:
@@ -332,9 +332,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12)),
                     child: Row(
                       children: [
-                        _buildTab("Profile", 0),
-                        _buildTab("Nutrition", 1),
-                        _buildTab("Other", 2),
+                        _buildTab("Profiel", 0),
+                        _buildTab("Voeding", 1),
+                        _buildTab("Overig", 2),
                       ],
                     ),
                   ),
@@ -361,7 +361,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         elevation: 0,
                       ),
-                      child: const Text("Save Changes", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text("Wijzigingen Opslaan", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
@@ -381,8 +381,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), label: "Scan"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
-          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorieten"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profiel"),
         ],
       ),
     );
@@ -415,29 +415,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ),
         const SizedBox(height: 25),
-        const Align(alignment: Alignment.centerLeft, child: Text("Basic Information", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        const Align(alignment: Alignment.centerLeft, child: Text("Basis Informatie", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
         const SizedBox(height: 15),
-        _buildLabel("Name"),
-        _buildTextField(_nameController, "Name"),
+        _buildLabel("Naam"),
+        _buildTextField(_nameController, "Naam"),
         _buildLabel("Email"),
         _buildTextField(_emailController, "Email", readOnly: true),
         Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Age"), _buildTextField(_ageController, "20", isNumber: true)])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Leeftijd"), _buildTextField(_ageController, "20", isNumber: true)])),
           const SizedBox(width: 15),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Gender"), _buildTextField(_genderController, "Male")])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Geslacht"), _buildTextField(_genderController, "Mannelijk")])),
         ]),
         const SizedBox(height: 20),
-        const Align(alignment: Alignment.centerLeft, child: Text("Body Measurements", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
+        const Align(alignment: Alignment.centerLeft, child: Text("Lichaamsafmetingen", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
         const SizedBox(height: 15),
         Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Height (cm)"), _buildTextField(_heightController, "180", isNumber: true)])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Hoogte (cm)"), _buildTextField(_heightController, "180", isNumber: true)])),
           const SizedBox(width: 15),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Weight (kg)"), _buildTextField(_weightController, "75", isNumber: true)])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel("Gewicht (kg)"), _buildTextField(_weightController, "75", isNumber: true)])),
         ]),
-        _buildLabel("Goal"),
+        _buildLabel("Doel"),
         _buildTextField(_goalController, "Goal"),
-        _buildLabel("Activity Level"),
-        _buildTextField(_activityController, "Activity Level"),
+        _buildLabel("Activiteitsniveau"),
+        _buildTextField(_activityController, "Activiteitsniveau"),
       ],
     );
   }
@@ -448,8 +448,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Dynamic Calorie Goal", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        const Text("Automatically calculated from your profile", style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const Text("Dynamisch Calorie Doel", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Automatisch berekend op basis van uw profiel", style: TextStyle(color: Colors.grey, fontSize: 12)),
         const SizedBox(height: 15),
         Container(
           width: double.infinity,
@@ -457,19 +457,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
           decoration: BoxDecoration(color: const Color(0xFFE0F2F1), borderRadius: BorderRadius.circular(15)),
           child: Column(children: [
             Text("$_dailyCalories", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-            const Text("kcal per day", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            const Text("kcal per dag", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ]),
         ),
         const SizedBox(height: 30),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text("Macro Distribution", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text("Macro Distributie", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Text("${_totalMacro.toInt()}%", style: TextStyle(color: isInvalid ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
         ]),
-        _buildMacroSlider("Carbs", Colors.blue, _carbPct, (val) => setState(() => _carbPct = val)),
-        _buildMacroSlider("Protein", Colors.orange, _proteinPct, (val) => setState(() => _proteinPct = val)),
-        _buildMacroSlider("Fats", Colors.red, _fatPct, (val) => setState(() => _fatPct = val)),
+        _buildMacroSlider("Koolhydraten", Colors.blue, _carbPct, (val) => setState(() => _carbPct = val)),
+        _buildMacroSlider("Proteïne", Colors.orange, _proteinPct, (val) => setState(() => _proteinPct = val)),
+        _buildMacroSlider("Vetten", Colors.red, _fatPct, (val) => setState(() => _fatPct = val)),
         const SizedBox(height: 30),
-        const Text("Dietary Restrictions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Dieet Beperkingen", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 15),
         GridView.builder(
           shrinkWrap: true,
@@ -497,17 +497,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Notifications", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text("Meldingen", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 15),
-        _buildSwitchTile("Meal Reminders", "Get notified when it's time to eat", _mealReminders, (val) => setState(() => _mealReminders = val)),
-        _buildSwitchTile("Weekly Progress", "Weekly summary of your nutrition", _weeklyProgress, (val) => setState(() => _weeklyProgress = val)),
-        _buildSwitchTile("Shopping List", "Reminder to check your shopping list", _shoppingList, (val) => setState(() => _shoppingList = val)),
+        _buildSwitchTile("Maaltijd Herinnering", "Krijg een melding wanneer het tijd is om te eten", _mealReminders, (val) => setState(() => _mealReminders = val)),
+        _buildSwitchTile("Wekelijkse Voortgang", "Wekelijkse samenvatting van uw voeding", _weeklyProgress, (val) => setState(() => _weeklyProgress = val)),
+        _buildSwitchTile("Boodschappenlijst", "Herinnering om uw boodschappenlijst te controleren", _shoppingList, (val) => setState(() => _shoppingList = val)),
         const SizedBox(height: 30),
         const Text("Account", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 15),
-        _buildAccountTile(Icons.lock_outline, "Change Password", _changePassword),
-        _buildAccountTile(Icons.logout, "Log Out", _logOut, isDestructive: true),
-        _buildAccountTile(Icons.delete_outline, "Delete Account", _deleteAccount, isDestructive: true),
+        _buildAccountTile(Icons.lock_outline, "Wachtwoord wijzigen", _changePassword),
+        _buildAccountTile(Icons.logout, "Log Uit", _logOut, isDestructive: true),
+        _buildAccountTile(Icons.delete_outline, "Account verwijderen", _deleteAccount, isDestructive: true),
       ],
     );
   }
@@ -538,7 +538,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)]),
-      child: SwitchListTile(title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)), value: value, activeColor: const Color(0xFF1B8C61), onChanged: onChanged),
+      child: SwitchListTile(title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)), value: value, activeThumbColor: const Color(0xFF1B8C61), onChanged: onChanged),
     );
   }
 

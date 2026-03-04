@@ -135,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                       obscureText: true,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.lock_outline, color: darkBlue),
-                        hintText: "Password",
+                        hintText: "Wachtwoord",
                         enabledBorder: UnderlineInputBorder(
                             borderSide: BorderSide(color: darkBlue, width: 2)),
                       ),
@@ -171,7 +171,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 20),
 
                     // Register button
-                    _buildSecondaryButton("Register", darkBlue, () {
+                    _buildSecondaryButton("Registreren", darkBlue, () {
                       Navigator.pushNamed(context, '/register');
                     }),
                   ],

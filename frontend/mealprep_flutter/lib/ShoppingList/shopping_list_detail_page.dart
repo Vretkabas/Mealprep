@@ -20,7 +20,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
   List<Map<String, dynamic>> _items = [];
   final TextEditingController _barcodeController = TextEditingController();
   bool _isLoading = true;
-  Set<String> _selectedItemIds = {};
+  final Set<String> _selectedItemIds = {};
 
   @override
   void initState() {

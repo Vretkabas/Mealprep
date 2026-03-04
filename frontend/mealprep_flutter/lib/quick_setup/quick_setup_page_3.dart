@@ -85,7 +85,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
 
               // --- Titel & Afbeelding ---
               Text(
-                "How active are you?",
+                "Hoe actief ben je?",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark),
                 textAlign: TextAlign.center,
               ),
@@ -96,13 +96,13 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
               const SizedBox(height: 30),
 
               // --- Activiteit Opties ---
-              _buildActivityCard(0, "Low", "Almost no activity"),
+              _buildActivityCard(0, "Laag", "Bijna geen activiteit"),
               const SizedBox(height: 15),
-              _buildActivityCard(1, "Slightly active", "1-3 times sport a week"),
+              _buildActivityCard(1, "Licht actief", "1-3 keer per week sport"),
               const SizedBox(height: 15),
-              _buildActivityCard(2, "Medium", "3-5 times sport a week"),
+              _buildActivityCard(2, "Gemiddeld", "3-5 keer per week sport"),
               const SizedBox(height: 15),
-              _buildActivityCard(3, "Very active", "6-7 times sport a week"),
+              _buildActivityCard(3, " Zeer actief", "6-7 keer per week sport"),
 
               const SizedBox(height: 30),
 
@@ -150,7 +150,7 @@ class _QuickSetupPage3State extends State<QuickSetupPage3> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     elevation: 5,
                   ),
-                  child: const Text("Next", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text("Volgende", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 40),

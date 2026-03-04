@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,7 +18,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _displayName = 'User';
   
   // Standaard taal instellen
-  String _currentLanguage = 'English';
+  String _currentLanguage = 'Nederlands';
 
   @override
   void initState() {
@@ -72,7 +71,7 @@ class _ProfilePageState extends State<ProfilePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "Select Language",
+                "Selecteer Taal",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 15),
@@ -233,22 +232,22 @@ class _ProfilePageState extends State<ProfilePage> {
                   
                   _buildSectionTitle("Account"),
                   _buildListTile(Icons.email, "Email", hasArrow: true, onTap: _navigateToSettings),
-                  _buildListTile(Icons.lock, "Password", hasArrow: true),
-                  _buildListTile(Icons.delete, "Delete Account", hasArrow: true),
+                  _buildListTile(Icons.lock, "Wachtwoord", hasArrow: true),
+                  _buildListTile(Icons.delete, "Account Verwijderen", hasArrow: true),
 
                   const SizedBox(height: 20),
-                  _buildSectionTitle("Preferences"),
-                  _buildListTile(Icons.restaurant, "Diet & Allergens", hasArrow: true, onTap: _navigateToSettings),
-                  _buildListTile(Icons.favorite, "Health Goals", hasArrow: true, onTap: _navigateToSettings),
+                  _buildSectionTitle("Voorkeuren"),
+                  _buildListTile(Icons.restaurant, "Dieet & Allergenen", hasArrow: true, onTap: _navigateToSettings),
+                  _buildListTile(Icons.favorite, "Gezondheidsdoelen", hasArrow: true, onTap: _navigateToSettings),
 
                   const SizedBox(height: 20),
-                  _buildSectionTitle("App Settings"),
-                  _buildListTile(Icons.notifications, "Notifications", hasArrow: true),
+                  _buildSectionTitle("App Instellingen"),
+                  _buildListTile(Icons.notifications, "Meldingen", hasArrow: true),
                   
                   // GEWIJZIGD: Language klikbaar gemaakt met subtitel voor huidige taal
                   _buildListTile(
                     Icons.language, 
-                    "Language", 
+                    "Taal", 
                     subtitle: _currentLanguage, // Toon geselecteerde taal
                     hasArrow: true, 
                     onTap: _showLanguagePicker

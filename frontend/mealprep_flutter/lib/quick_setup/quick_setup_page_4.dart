@@ -38,13 +38,13 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
 
   void _handleSelection(String label) {
     setState(() {
-      if (label == 'None') {
+      if (label == 'Geen') {
         // Als 'None' wordt gekozen, wis alle andere selecties
         _selectedItems.clear();
-        _selectedItems.add('None');
+        _selectedItems.add('Geen');
       } else {
         // Als een specifieke allergie wordt gekozen, verwijder 'None'
-        _selectedItems.remove('None');
+        _selectedItems.remove('Geen');
         if (_selectedItems.contains(label)) {
           _selectedItems.remove(label);
         } else {
@@ -135,7 +135,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
               ),
               const SizedBox(height: 30),
 
-              Text("Allergies & Preferences", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark)),
+              Text("Allergieën & Voorkeuren", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark)),
               const SizedBox(height: 10),
               const Text("🥗", style: TextStyle(fontSize: 50)),
               const SizedBox(height: 20),
@@ -194,7 +194,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
                     backgroundColor: brandGreen,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  child: const Text("Finish", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  child: const Text("Voltooien", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 20),
@@ -221,7 +221,7 @@ class _QuickSetupPage4State extends State<QuickSetupPage4> {
             Text(emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(height: 4),
             Text(
-              label == 'None' ? 'No Allergies' : label, 
+              label == 'Geen' ? 'Geen Allergieën' : label, 
               style: TextStyle(
                 fontWeight: FontWeight.bold, 
                 color: isSelected ? brandGreen : textDark,
