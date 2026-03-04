@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/food_api_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
+import 'package:mealprep_flutter/navbar.dart';
 
 class ProductScreen extends StatefulWidget {
   final String barcode;
@@ -282,12 +283,14 @@ class _ProductScreenState extends State<ProductScreen> {
                             flex: 1,
                             child: PieChart(
                               PieChartData(
-                                sectionsSpace: 4,
+                                sectionsSpace: 3,
                                 centerSpaceRadius: 35,
                                 sections: [
                                   _pieSection(proteins, total, Colors.green, "Eiwit"),
                                   _pieSection(carbs, total, Colors.blue, "Koolh."),
                                   _pieSection(fat, total, Colors.purple, "Vet"),
+                                  _pieSection(sugars, total, Colors.red, "Suiker"),
+                                  _pieSection(salt, total, Colors.blueGrey, "Zout"),
                                 ],
                               ),
                             ),
@@ -300,6 +303,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                 _buildLegend(Colors.green, "Eiwitten"),
                                 _buildLegend(Colors.blue, "Koolhydraten"),
                                 _buildLegend(Colors.purple, "Vetten"),
+                                _buildLegend(Colors.red, "Suikers"),
+                                _buildLegend(Colors.blueGrey, "Zout"),
                               ],
                             ),
                           )
@@ -314,6 +319,7 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 1),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20),

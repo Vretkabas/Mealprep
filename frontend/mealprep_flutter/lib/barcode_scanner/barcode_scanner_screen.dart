@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mealprep_flutter/screens/product_screen.dart';
+import 'package:mealprep_flutter/barcode_scanner/product_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mealprep_flutter/navbar.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -248,6 +249,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         ),
                       ],
                     ),
+                    
                   ),
                 ),
               ),
@@ -256,7 +258,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           );
         },
       ),
-
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 1),
     );
   }
 }

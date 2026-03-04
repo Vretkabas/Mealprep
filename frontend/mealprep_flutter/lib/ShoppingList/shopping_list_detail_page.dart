@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
-import 'package:mealprep_flutter/screens/product_screen.dart';
+import 'package:mealprep_flutter/barcode_scanner/product_screen.dart';
 import '../services/suggestion_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
 
 class ShoppingListDetailPage extends StatefulWidget {
   final String listId;
@@ -389,6 +390,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
                 _buildBottomBar(),
               ],
             ),
+            bottomNavigationBar: AppBottomNavBar(currentIndex: 2),
     );
   }
 

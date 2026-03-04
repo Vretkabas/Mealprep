@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/favorites_service.dart';
-import 'package:mealprep_flutter/screens/product_screen.dart';
+import 'package:mealprep_flutter/barcode_scanner/product_screen.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
-
+ 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
-
+ 
 class _FavoritesPageState extends State<FavoritesPage> {
   List<Map<String, dynamic>> _favorites = [];
   bool _isLoading = true;
-
+ 
   // ── Thema kleuren (zelfde als de rest van de app) ──
   final Color brandGreen = const Color(0xFF00BFA5);
   final Color textDark = const Color(0xFF345069);
   final Color bgGrey = const Color(0xFFF5F7F9);
-
+ 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
   }
-
+ 
   Future<void> _loadFavorites() async {
     setState(() => _isLoading = true);
     try {
@@ -38,7 +39,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
+ 
   Future<void> _removeFavorite(String productId, String productName) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -64,7 +65,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         ],
       ),
     );
-
+ 
     if (confirm == true) {
       try {
         await FavoritesService.removeFavorite(productId);
@@ -87,7 +88,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       }
     }
   }
-
+ 
   Color _nutriscoreColor(String? grade) {
     switch (grade?.toLowerCase()) {
       case 'a':
@@ -104,7 +105,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         return Colors.grey;
     }
   }
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,11 +147,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     ),
                   ],
                 ),
+              bottomNavigationBar: AppBottomNavBar(currentIndex: 3),
     );
+    
   }
-
+ 
   // ── Header met teller ────────────────────────────────────────────────────────
-
+ 
   Widget _buildHeader() {
     return Container(
       color: Colors.white,
@@ -171,9 +174,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
       ),
     );
   }
-
+ 
   // ── Favoriet kaart ───────────────────────────────────────────────────────────
-
+ 
   Widget _buildFavoriteCard(Map<String, dynamic> product) {
     final productId = product['product_id'] as String;
     final name = product['product_name'] ?? 'Onbekend';
@@ -183,7 +186,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final nutriscore = product['nutriscore_grade'];
     final imageUrl = product['image_url'];
     final barcode = product['barcode'];
-
+ 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -227,7 +230,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-
+ 
                 // ── Info ──
                 Expanded(
                   child: Column(
@@ -278,49 +281,30 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     ],
                   ),
                 ),
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          final barcode = product['barcode']?.toString();
-                          if (barcode != null && barcode.isNotEmpty) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProductScreen(
-                                  barcode: barcode,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              // Product afbeelding
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  width: 60,
-                                  height: 60,
-                                  color: Colors.white,
-                                  child: Image.network(
-                                    imageUrl,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) => _placeholderIcon(),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-
+ 
+                // ── Verwijder knop ──
+                GestureDetector(
+                  onTap: () => _removeFavorite(productId, name),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.favorite,
+                        color: Colors.red.shade400, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+ 
   // ── Lege staat ───────────────────────────────────────────────────────────────
-
+ 
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -354,16 +338,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
       ),
     );
   }
-
+ 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-
+ 
   Widget _placeholder() {
     return Container(
       color: bgGrey,
       child: Icon(Icons.fastfood, color: Colors.grey.shade400, size: 28),
     );
   }
-
+ 
   Widget _chip(String label, Color bg, Color fg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -377,7 +361,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       ),
     );
   }
-
+ 
   Widget _nutriscoreChip(String grade) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

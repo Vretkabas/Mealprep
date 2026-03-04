@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
 import 'package:mealprep_flutter/ShoppingList/create_shopping_list_page.dart';
 import 'shopping_list_detail_page.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
 
 class ShoppingListsPage extends StatefulWidget {
   const ShoppingListsPage({super.key});
@@ -121,6 +122,7 @@ class _ShoppingListsPageState extends State<ShoppingListsPage> {
                           _buildListCard(shoppingLists[index]),
                     ),
             ),
+            bottomNavigationBar: AppBottomNavBar(currentIndex: 2),
     );
   }
 

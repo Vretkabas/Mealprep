@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'edit_profile_page.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -386,6 +387,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
+            bottomNavigationBar: AppBottomNavBar(currentIndex: 4),
     );
   }
 

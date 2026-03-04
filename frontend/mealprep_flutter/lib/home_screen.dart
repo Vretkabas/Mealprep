@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'barcode_scanner_screen.dart';
-import 'object_scan_screen.dart';
-import '../services/food_api_service.dart';
+import 'barcode_scanner/barcode_scanner_screen.dart';
+import 'screens/object_scan_screen.dart';
+import 'services/food_api_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
