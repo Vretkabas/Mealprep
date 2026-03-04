@@ -279,26 +279,45 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   ),
                 ),
 
-                // ── Verwijder knop ──
-                GestureDetector(
-                  onTap: () => _removeFavorite(productId, name),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.favorite,
-                        color: Colors.red.shade400, size: 20),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          final barcode = product['barcode']?.toString();
+                          if (barcode != null && barcode.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProductScreen(
+                                  barcode: barcode,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              // Product afbeelding
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  color: Colors.white,
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, _, _) => _placeholderIcon(),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
 
   // ── Lege staat ───────────────────────────────────────────────────────────────
 

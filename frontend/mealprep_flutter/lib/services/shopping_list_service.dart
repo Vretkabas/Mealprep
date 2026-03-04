@@ -1,29 +1,12 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ShoppingListService {
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000';
-    }
-
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000';
-    }
-
-    if (Platform.isIOS) {
-      return 'http://localhost:8000';
-    }
-
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-      return 'http://localhost:8000';
-    }
-
-    // falback voor fysiek toestel
-    return 'http://:8000'; // moet lokaal ip van pc ingeven
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081'; // Android emulator
   }
 
 
@@ -172,8 +155,8 @@ static Future<void> updateItemChecked({
   required String itemId,
   required bool isChecked,
 }) async {
-  await http.patch(
-    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+  await http.post(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId/update'),
     headers: await _authHeaders(),
     body: jsonEncode({'is_checked': isChecked}),
   );
@@ -190,8 +173,8 @@ static Future<void> updateItemQuantity({
   required String itemId,
   required int quantity,
 }) async {
-  final response = await http.patch(
-    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+  final response = await http.post(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId/update'),
     headers: await _authHeaders(),
     body: jsonEncode({'quantity': quantity}),
   );

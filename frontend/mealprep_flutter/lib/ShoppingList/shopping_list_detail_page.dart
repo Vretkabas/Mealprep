@@ -93,7 +93,7 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
     for (final item in _items) {
       final savingsPerUnit = item['savings_per_unit'];
       final quantity = item['quantity'] ?? 1;
-      if (savingsPerUnit != null && (item['has_promo'] == true)) {
+      if (savingsPerUnit != null && (item['has_promo'] == true) && item['is_checked'] == true) {
         savings += ((savingsPerUnit is num) ? savingsPerUnit.toDouble() : 0) * quantity;
       }
     }
@@ -129,6 +129,31 @@ class _ShoppingListDetailPageState extends State<ShoppingListDetailPage> {
           isChecked: !allChecked,
         );
       }
+
+      // Savings aanpassen in user profiel
+      double savingsAmount = 0.0;
+      for (final itemId in _selectedItemIds) {
+        final item = _items.firstWhere(
+          (i) => i['item_id']?.toString() == itemId,
+          orElse: () => <String, dynamic>{},
+        );
+        final savingsPerUnit = (item['savings_per_unit'] as num?)?.toDouble() ?? 0.0;
+        final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
+        savingsAmount += savingsPerUnit * quantity;
+      }
+      if (savingsAmount > 0) {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          await Supabase.instance.client.rpc(
+            'increment_total_savings',
+            params: {
+              'uid': userId,
+              'amount': allChecked ? -savingsAmount : savingsAmount,
+            },
+          );
+        }
+      }
+
       setState(() => _selectedItemIds.clear());
       await _loadItems();
     } catch (e) {

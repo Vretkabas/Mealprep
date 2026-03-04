@@ -53,7 +53,7 @@ def get_user_lists(user_id: str = Depends(get_current_user)):
     return result.data or []
 
 
-@router.patch("/shopping-lists/items/{item_id}")
+@router.post("/shopping-lists/items/{item_id}/update")
 def update_item(item_id: str, data: dict, user_id: str = Depends(get_current_user)):
 
     # Haal list_id op vóór de update (nodig voor herberekening)
@@ -112,7 +112,6 @@ def delete_item(item_id: str, user_id: str = Depends(get_current_user)):
 @router.delete("/shopping-lists/{list_id}", status_code=204)
 def delete_shopping_list(list_id: str, user_id: str = Depends(get_current_user)):
 
-    # Controleer of lijst van ingelogde gebruiker is
     existing = supabase.table("shopping_lists") \
         .select("list_id") \
         .eq("list_id", list_id) \
@@ -122,7 +121,6 @@ def delete_shopping_list(list_id: str, user_id: str = Depends(get_current_user))
     if not existing.data:
         raise HTTPException(status_code=404, detail="Lijst niet gevonden")
 
-    # lijst verwijderen
     supabase.table("shopping_lists") \
         .delete() \
         .eq("list_id", list_id) \

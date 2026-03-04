@@ -12,11 +12,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Placeholder data (Later komt dit uit Supabase)
-  String _userName = "John"; 
-  final int _scansThisWeek = 12;
-  final double _savedThisWeek = 45.00;
-  final int _healthScore = 78;
+  String _userName = "User";
+  int _scansThisWeek = 0;
+  double _totalSaved = 0.0;
+  bool _loadingStats = true;
 
   int _selectedIndex = 0; // 0 = Home
 
@@ -67,15 +66,39 @@ class _HomePageState extends State<HomePage> {
   }
 
 Future<void> _fetchUserData() async {
-  final user = Supabase.instance.client.auth.currentUser;
+  final supabase = Supabase.instance.client;
+  final user = supabase.auth.currentUser;
   if (user == null) return;
 
-  setState(() {
-    _userName = user.userMetadata?['username'] ??
-                user.userMetadata?['full_name'] ??
-                user.email?.split('@')[0] ??
-                "User";
-  });
+  // Gebruikersnaam uit auth metadata
+  final name = user.userMetadata?['username'] ??
+               user.userMetadata?['full_name'] ??
+               user.email?.split('@')[0] ??
+               "User";
+
+  // Scans deze week
+  final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
+  final scansResult = await supabase
+      .from('scanned_items')
+      .select('product_id')
+      .eq('user_id', user.id)
+      .gte('scanned_at', weekAgo);
+
+  // Total savings uit user_settings
+  final settingsResult = await supabase
+      .from('user_settings')
+      .select('total_savings')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+  if (mounted) {
+    setState(() {
+      _userName = name;
+      _scansThisWeek = (scansResult as List).length;
+      _totalSaved = (settingsResult?['total_savings'] as num?)?.toDouble() ?? 0.0;
+      _loadingStats = false;
+    });
+  }
 }
 
   @override
@@ -171,16 +194,16 @@ Future<void> _fetchUserData() async {
                 ),
               ),
               const SizedBox(height: 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildStatCard(_scansThisWeek.toString(), "scans", Colors.greenAccent.withOpacity(0.1), brandGreen),
-                  const SizedBox(width: 12),
-                  _buildStatCard("€${_savedThisWeek.toInt()}", "saved", Colors.blueAccent.withOpacity(0.1), Colors.blue),
-                  const SizedBox(width: 12),
-                  _buildStatCard(_healthScore.toString(), "Health", Colors.purpleAccent.withOpacity(0.1), Colors.purple),
-                ],
-              ),
+              _loadingStats
+                  ? const Center(child: CircularProgressIndicator())
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStatCard(_scansThisWeek.toString(), "scans", Colors.greenAccent.withOpacity(0.1), brandGreen),
+                        const SizedBox(width: 12),
+                        _buildStatCard("€${_totalSaved.toStringAsFixed(2)}", "bespaard", Colors.blueAccent.withOpacity(0.1), Colors.blue),
+                      ],
+                    ),
               const SizedBox(height: 20),
             ],
           ),
