@@ -138,3 +138,20 @@ async def get_user_settings(user_id: str) -> Optional[Dict[str, Any]]:
             user_id,
         )
         return dict(row) if row else None
+
+
+async def add_to_total_savings(user_id: str, amount: float) -> None:
+    """Voeg een bedrag toe aan total_savings van de gebruiker (atomisch)."""
+    if amount <= 0:
+        return
+    db = await get_database_service()
+    async with db.pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE user_settings
+            SET total_savings = COALESCE(total_savings, 0) + $1
+            WHERE user_id = $2
+            """,
+            round(amount, 2),
+            user_id,
+        )

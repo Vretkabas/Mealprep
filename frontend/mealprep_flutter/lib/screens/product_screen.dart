@@ -90,8 +90,18 @@ class _ProductScreenState extends State<ProductScreen> {
         loading = false;
       });
     } catch (e) {
+      debugPrint('ProductScreen fout (barcode: ${widget.barcode}): $e');
+      String message = 'Product niet gevonden';
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('401') || msg.contains('geautoriseerd') || msg.contains('authenticated')) {
+        message = 'Sessie verlopen – log opnieuw in';
+      } else if (msg.contains('404') || msg.contains('niet gevonden')) {
+        message = 'Product niet gevonden in de database';
+      } else if (msg.contains('socket') || msg.contains('connection') || msg.contains('network')) {
+        message = 'Geen verbinding met de server';
+      }
       setState(() {
-        error = 'Product niet gevonden';
+        error = message;
         loading = false;
       });
     }
@@ -110,7 +120,29 @@ class _ProductScreenState extends State<ProductScreen> {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.black)),
-        body: Center(child: Text(error!, style: const TextStyle(fontSize: 18, color: Colors.grey))),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 60, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(error!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, color: Colors.grey)),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() { loading = true; error = null; });
+                    _fetchProduct();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Opnieuw proberen'),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF24966D), foregroundColor: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -164,7 +196,31 @@ class _ProductScreenState extends State<ProductScreen> {
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.fastfood_rounded, size: 50, color: Color(0xFF24966D)),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 110,
+                            height: 110,
+                            child: () {
+                              final rawUrl = product!['image_url'] as String?;
+                              final imageUrl = rawUrl != null
+                                  ? '${FoodApiService.baseUrl}/proxy/image?url=${Uri.encodeQueryComponent(rawUrl)}'
+                                  : null;
+                              if (imageUrl == null) {
+                                return const Icon(Icons.fastfood_rounded, size: 50, color: Color(0xFF24966D));
+                              }
+                              return Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => const Icon(
+                                  Icons.fastfood_rounded,
+                                  size: 50,
+                                  color: Color(0xFF24966D),
+                                ),
+                              );
+                            }(),
+                          ),
+                        ),
                         const SizedBox(height: 15),
                         Text(
                           product!['name'] ?? 'Onbekend product',

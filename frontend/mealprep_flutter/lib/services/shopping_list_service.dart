@@ -155,8 +155,8 @@ static Future<void> updateItemChecked({
   required String itemId,
   required bool isChecked,
 }) async {
-  await http.patch(
-    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+  await http.post(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId/update'),
     headers: await _authHeaders(),
     body: jsonEncode({'is_checked': isChecked}),
   );
@@ -173,8 +173,8 @@ static Future<void> updateItemQuantity({
   required String itemId,
   required int quantity,
 }) async {
-  final response = await http.patch(
-    Uri.parse('$baseUrl/shopping-lists/items/$itemId'),
+  final response = await http.post(
+    Uri.parse('$baseUrl/shopping-lists/items/$itemId/update'),
     headers: await _authHeaders(),
     body: jsonEncode({'quantity': quantity}),
   );

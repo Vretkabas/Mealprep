@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
 import os
+import requests as http_requests
 from supabase import create_client, Client
 from fastapi import Header
 
@@ -125,6 +126,38 @@ def log_scan_to_supabase(
         return {"logged": False, "reason": "error", "error": str(e)}
 
 
+def _fetch_from_openfoodfacts_api(barcode: str) -> Optional[dict]:
+    """Fallback: haal product op via de publieke OpenFoodFacts API."""
+    try:
+        url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
+        resp = http_requests.get(url, headers={"User-Agent": "MealPrepApp/1.0"}, timeout=5)
+        data = resp.json()
+        if data.get("status") != 1:
+            print(f"  OpenFoodFacts: barcode {barcode} niet gevonden.")
+            return None
+        p = data["product"]
+        n = p.get("nutriments", {})
+        img = p.get("image_front_url") or p.get("image_url")
+        print(f"  OpenFoodFacts match: {p.get('product_name', 'Onbekend')}")
+        return {
+            "barcode": barcode,
+            "name": p.get("product_name"),
+            "brands": p.get("brands"),
+            "nutriments": {
+                "energy_kcal": n.get("energy-kcal_100g"),
+                "proteins": n.get("proteins_100g"),
+                "carbohydrates": n.get("carbohydrates_100g"),
+                "fat": n.get("fat_100g"),
+                "sugars": n.get("sugars_100g"),
+                "salt": n.get("salt_100g"),
+            },
+            "image_url": img,
+        }
+    except Exception as e:
+        print(f"  OpenFoodFacts API fout voor {barcode}: {e}")
+        return None
+
+
 def get_product_by_barcode(
     barcode: str,
     user_id: str,
@@ -136,8 +169,19 @@ def get_product_by_barcode(
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Try barcode variations: original, without leading zeros, 12→13 digit
+        barcode_variations = [barcode]
+        stripped = barcode.lstrip('0')
+        if stripped != barcode:
+            barcode_variations.append(stripped)
+        if len(barcode) == 12:
+            barcode_variations.append('0' + barcode)
+        if len(stripped) == 12:
+            barcode_variations.append('0' + stripped)
+
+        placeholders = ','.join(['?' for _ in barcode_variations])
         cursor.execute(
-            """
+            f"""
             SELECT
                 barcode,
                 product_name,
@@ -149,31 +193,54 @@ def get_product_by_barcode(
                 sugars_100g,
                 salt_100g
             FROM products
-            WHERE barcode = ?
+            WHERE barcode IN ({placeholders})
             LIMIT 1
             """,
-            (barcode,),
+            barcode_variations,
         )
- 
+
         row = cursor.fetchone()
         conn.close()
- 
-        if not row:
-            return None
 
-        product = {
-            "barcode": row["barcode"],
-            "name": row["product_name"],
-            "brands": row["brands"],
-            "nutriments": {
-                "energy_kcal": row["energy_kcal_100g"],
-                "proteins": row["proteins_100g"],
-                "carbohydrates": row["carbohydrates_100g"],
-                "fat": row["fat_100g"],
-                "sugars": row["sugars_100g"],
-                "salt": row["salt_100g"],
-            },
-        }
+        if not row:
+            # Fallback: OpenFoodFacts API
+            print(f"Barcode {barcode} niet in SQLite, OpenFoodFacts API wordt geprobeerd...")
+            off_product = _fetch_from_openfoodfacts_api(barcode)
+            if off_product is None:
+                return None
+            product = off_product
+        else:
+            product = {
+                "barcode": row["barcode"],
+                "name": row["product_name"],
+                "brands": row["brands"],
+                "nutriments": {
+                    "energy_kcal": row["energy_kcal_100g"],
+                    "proteins": row["proteins_100g"],
+                    "carbohydrates": row["carbohydrates_100g"],
+                    "fat": row["fat_100g"],
+                    "sugars": row["sugars_100g"],
+                    "salt": row["salt_100g"],
+                },
+            }
+
+        # Fetch image_url from Supabase if not already set (e.g. from OpenFoodFacts API)
+        if not product.get("image_url") and supabase:
+            try:
+                img_result = supabase.table("products") \
+                    .select("image_url") \
+                    .eq("barcode", barcode) \
+                    .limit(1) \
+                    .execute()
+                if img_result.data and len(img_result.data) > 0:
+                    product["image_url"] = img_result.data[0].get("image_url")
+                else:
+                    product["image_url"] = None
+            except Exception as e:
+                print(f"Warning: Could not fetch image_url from Supabase: {e}")
+                product["image_url"] = None
+        elif not product.get("image_url"):
+            product["image_url"] = None
         
         # Log de scan naar Supabase in achtergrond, falen blokkeert product niet
         if log_scan:

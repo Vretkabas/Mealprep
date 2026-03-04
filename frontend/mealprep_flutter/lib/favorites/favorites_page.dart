@@ -128,12 +128,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTap: () {
-                          if (product['barcode'] != null) {
+                          final barcode = product['barcode']?.toString();
+                          if (barcode != null && barcode.isNotEmpty) {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => ProductScreen(
-                                  barcode: product['barcode'],
+                                  barcode: barcode,
                                 ),
                               ),
                             );

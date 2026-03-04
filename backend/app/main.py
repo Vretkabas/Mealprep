@@ -10,12 +10,8 @@ from app.routers.barcode_api import router as barcode_router
 from .routers import suggestions
 from app.routers import shopping_lists
 from app.routers import favorites_router
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="MealPrep API")
-
-# CORS wordt afgehandeld door nginx (zie nginx/nginx.conf)
-# Geen CORSMiddleware hier om dubbele headers te voorkomen
 
 # include routers
 app.include_router(products.router)

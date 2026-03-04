@@ -1,12 +1,41 @@
 // services/user_service.dart
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserService {
-  static const String baseUrl = 'http://10.0.2.2:8000'; 
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081'; // Android emulator → nginx proxy
+  }
 
-  // 1. Profiel ophalen
+  static Future<String?> _getToken() async {
+    return Supabase.instance.client.auth.currentSession?.accessToken;
+  }
+
+  // 1. User settings ophalen (inclusief total_savings, doelen, etc.)
+  static Future<Map<String, dynamic>?> getUserSettings() async {
+    try {
+      final token = await _getToken();
+      if (token == null) return null;
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/user/settings'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('Error fetching user settings: $e');
+    }
+    return null;
+  }
+
+  // 2. Profiel ophalen
   static Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/user/profile/$userId'));

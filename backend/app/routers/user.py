@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-from app.services.user_services import save_user_settings
+from app.services.user_services import save_user_settings, get_user_settings
+from app.auth import get_current_user
 
 router = APIRouter()
 
@@ -41,4 +42,16 @@ async def save_user_preferences(preferences: UserPreferences):
 
     except Exception as e:
         print(f"Error saving user settings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/user/settings")
+async def get_user_preferences(user_id: str = Depends(get_current_user)):
+    try:
+        settings = await get_user_settings(user_id)
+        if not settings:
+            return {"total_savings": 0.0}
+        return settings
+    except Exception as e:
+        print(f"Error fetching user settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))

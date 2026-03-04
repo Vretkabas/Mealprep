@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FavoritesService {
-  static const String _baseUrl = 'http://10.0.2.2:8000';
+  static String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    return 'http://10.0.2.2:8081'; // Android emulator → nginx proxy
+  }
 
   static Future<String> _getToken() async {
     final session = Supabase.instance.client.auth.currentSession;
