@@ -231,9 +231,9 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), label: "Scan"),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
-          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lijsten"),
+          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorieten"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profiel"),
         ],
       ),
     );

@@ -183,7 +183,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Profile", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Profiel", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -266,7 +266,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         foregroundColor: Colors.red,
                       ),
-                      child: const Text("Logout", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: const Text("Loguit", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 30),
