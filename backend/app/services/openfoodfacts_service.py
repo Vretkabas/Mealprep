@@ -1,5 +1,6 @@
 from email.header import Header
 import sqlite3
+import httpx
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
@@ -9,6 +10,8 @@ from supabase import create_client, Client
 from fastapi import Header
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "openfoodfacts.db"
+
+OPENFOODFACTS_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
 # Supabase client initialiseren
 try:

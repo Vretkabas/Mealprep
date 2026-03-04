@@ -8,6 +8,7 @@ import 'ShoppingList/shopping_list_detail_page.dart';
 import 'screens/barcode_scanner_screen.dart';
 import 'services/shopping_list_service.dart';
 import 'services/suggestion_service.dart';
+import 'package:mealprep_flutter/services/favorites_service.dart';
 
 // ── Filter constants ───────────────────────────────────────────────────────────
 
@@ -160,11 +161,26 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
 
   // ── Data fetching ────────────────────────────────────────────────────────────
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchPromotions();
+@override
+void initState() {
+  super.initState();
+  _fetchPromotions();
+  _loadFavorites();
+}
+
+Future<void> _loadFavorites() async {
+  try {
+    final favs = await FavoritesService.getFavorites();
+    if (!mounted) return;
+    setState(() {
+      _favorites.clear();
+      _favorites.addAll(favs.map((f) => f['product_id'].toString()));
+    });
+  } catch (e) {
+    // Stil falen — favorieten zijn niet kritisch voor de pagina
+    print('Favorieten laden mislukt: $e');
   }
+}
 
   @override
   void dispose() {
@@ -190,12 +206,24 @@ class _ProductCatalogPageState extends State<ProductCatalogPage> {
     }
   }
 
-void _toggleFavorite(Map<String, dynamic> product) {
+void _toggleFavorite(Map<String, dynamic> product) async {
   final id = product['product_id']?.toString() ?? '';
   if (id.isEmpty) return;
+
+  final isFav = _favorites.contains(id);
+
   setState(() {
-    if (_favorites.contains(id)) {
+    if (isFav) {
       _favorites.remove(id);
+    } else {
+      _favorites.add(id);
+    }
+  });
+
+  try {
+    if (isFav) {
+      await FavoritesService.removeFavorite(id);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Verwijderd uit favorieten'),
@@ -205,7 +233,8 @@ void _toggleFavorite(Map<String, dynamic> product) {
         ),
       );
     } else {
-      _favorites.add(id);
+      await FavoritesService.addFavorite(id);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Toegevoegd aan favorieten!'),
@@ -215,7 +244,20 @@ void _toggleFavorite(Map<String, dynamic> product) {
         ),
       );
     }
-  });
+  } catch (e) {
+    // Rollback bij fout
+    if (!mounted) return;
+    setState(() {
+      if (isFav) {
+        _favorites.add(id);
+      } else {
+        _favorites.remove(id);
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Fout: $e'), backgroundColor: Colors.red),
+    );
+  }
 }
   Future<void> _searchProducts(String query) async {
     if (query.isEmpty) {
