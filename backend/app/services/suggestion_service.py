@@ -1,6 +1,7 @@
 from google import genai
 import json
 import os
+import asyncio
 from typing import Optional
 from app.services.database_service import get_database_service
 from app.services.user_services import get_user_settings
@@ -135,8 +136,9 @@ Antwoord UITSLUITEND in dit JSON formaat:
 
     # Gemini API call
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model="gemini-2.5-flash-lite",
             contents=prompt,
             config={
                 "response_mime_type": "application/json",
