@@ -3,12 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'ShoppingList/shopping_list_page.dart';
-import 'ShoppingList/shopping_list_detail_page.dart';
-import 'screens/barcode_scanner_screen.dart';
-import 'services/shopping_list_service.dart';
-import 'services/suggestion_service.dart';
+import '../ShoppingList/shopping_list_page.dart';
+import '../ShoppingList/shopping_list_detail_page.dart';
+import '../barcode_scanner/barcode_scanner_screen.dart';
+import '../services/shopping_list_service.dart';
+import '../services/suggestion_service.dart';
 import 'package:mealprep_flutter/services/favorites_service.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
 
 // ── Filter constants ───────────────────────────────────────────────────────────
 
@@ -280,19 +281,6 @@ void _toggleFavorite(Map<String, dynamic> product) async {
     } catch (e) {
       setState(() => _isSearching = false);
       print("Zoekfout: $e");
-    }
-  }
-
-  // ── Navbar ───────────────────────────────────────────────────────────────────
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-    switch (index) {
-      case 0: Navigator.pushNamed(context, '/home'); break;
-      case 1: Navigator.push(context, MaterialPageRoute(builder: (_) => const BarcodeScannerScreen())); break;
-      case 2: Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListsPage())); break;
-      case 3: Navigator.pushNamed(context, '/favorites'); break;
-      case 4: Navigator.pushNamed(context, '/profile'); break;
     }
   }
 
@@ -877,22 +865,7 @@ void _toggleFavorite(Map<String, dynamic> product) async {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: brandGreen,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), label: "Scan"),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
-          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
-        ],
-      ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: -1),
     );
   }
 

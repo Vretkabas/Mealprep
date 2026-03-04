@@ -10,13 +10,13 @@ import 'login_page.dart';
 import 'home_page.dart';
 import 'register_page.dart';
 import 'settings/profile_page.dart';
-import 'screens/barcode_scanner_screen.dart';
+import 'barcode_scanner/barcode_scanner_screen.dart';
 import 'screens/camera_scan_screen.dart';
 import 'quick_setup/quick_setup_page_1.dart';
 import 'quick_setup/quick_setup_page_2.dart';
 import 'quick_setup/quick_setup_page_3.dart';
 import 'quick_setup/quick_setup_page_4.dart';
-import 'store_selection_page.dart';
+import 'planning/store_selection_page.dart';
 import 'favorites/favorites_page.dart';
 
 // ===============================

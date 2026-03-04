@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/shopping_list_service.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
 
 class Create_shopping_list_page extends StatefulWidget {
   const Create_shopping_list_page({super.key});
@@ -86,6 +87,7 @@ class _Create_shopping_list_pageState extends State<Create_shopping_list_page> {
           ),
         ),
       ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 2),
     );
   }
 }

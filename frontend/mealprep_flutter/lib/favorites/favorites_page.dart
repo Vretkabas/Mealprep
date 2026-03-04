@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mealprep_flutter/services/favorites_service.dart';
-import 'package:mealprep_flutter/screens/product_screen.dart';
- 
+import 'package:mealprep_flutter/barcode_scanner/product_screen.dart';
+import 'package:mealprep_flutter/navbar.dart'; 
+
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
  
@@ -146,7 +147,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     ),
                   ],
                 ),
+              bottomNavigationBar: AppBottomNavBar(currentIndex: 3),
     );
+    
   }
  
   // ── Header met teller ────────────────────────────────────────────────────────

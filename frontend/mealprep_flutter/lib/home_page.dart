@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'screens/barcode_scanner_screen.dart';
+import 'barcode_scanner/barcode_scanner_screen.dart';
 import 'ShoppingList/shopping_list_page.dart';
-
+import 'navbar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,41 +23,6 @@ class _HomePageState extends State<HomePage> {
   final Color brandGreen = const Color(0xFF00BFA5);
   final Color backgroundGrey = const Color(0xFFF5F7F9);
   final Color textDark = const Color(0xFF345069);
-
-  // Navigatie logica voor de Bottom Bar
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    // Logica om naar andere pagina's te gaan
-    switch (index) {
-      case 0:
-         print("Navigeer naar homepage");
-         Navigator.pushNamed(context, '/home');
-        break;
-      case 1:
-        // Scan pagina
-        print("Navigeer naar Scan Pagina (via Navbar)");
-        Navigator.push(context,MaterialPageRoute(builder: (_) => const BarcodeScannerScreen(),),);
-        break;
-      case 2:
-        // Lists pagina
-        print("Navigeer naar Lists");
-        Navigator.push(context,MaterialPageRoute(builder: (_) => const ShoppingListsPage(),),);
-        break;
-      case 3:
-        // Favorites pagina
-        print("Navigeer naar Favorites");
-        Navigator.pushNamed(context, '/favorites');
-        break;
-      case 4:
-        // Profile pagina
-        print("Navigeer naar Profile");
-        Navigator.pushNamed(context, '/profile');
-        break;
-    }
-  }
 
   @override
   void initState() {
@@ -209,24 +174,8 @@ Future<void> _fetchUserData() async {
           ),
         ),
       ),
-      
       // --- BOTTOM NAVIGATION BAR ---
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Zorgt dat alle 5 iconen zichtbaar zijn
-        backgroundColor: Colors.white,
-        selectedItemColor: brandGreen,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.camera_alt_outlined), label: "Scan"),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Lists"),
-          BottomNavigationBarItem(icon: Icon(Icons.star_border), label: "Favorites"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: "Profile"),
-        ],
-      ),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 0),
     );
   }
 
